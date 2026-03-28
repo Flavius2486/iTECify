@@ -3,120 +3,165 @@ import { v4 as uuidv4 } from 'uuid';
 import db from '../database/db.js';
 import authMiddleware from '../middleware/auth.js';
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true }); // pentru a accesa :roomId
 
-async function isParticipant(chatId, userId) {
+async function isParticipant(roomId, userId) {
     const [rows] = await db.execute(
-        `SELECT 1
-         FROM chat ch
-         INNER JOIN \`text\` t ON ch.text_id = t.id
-         WHERE ch.id = ? AND (t.sender_id = ? OR t.receiver_id = ?)`,
-        [chatId, userId, userId]
+        'SELECT 1 FROM room_participant WHERE room_id = ? AND user_id = ?',
+        [roomId, userId]
     );
     return rows.length > 0;
 }
 
-// CREATE
+async function getFileIfBelongsToRoom(fileId, roomId) {
+    const [rows] = await db.execute(
+        'SELECT * FROM code_file WHERE id = ? AND room_id = ?',
+        [fileId, roomId]
+    );
+    return rows.length ? rows[0] : null;
+}
+
+// GET /api/rooms/:roomId/code – lista fișiere (fără conținut)
+router.get('/', authMiddleware, async (req, res) => {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
+        }
+
+        const [files] = await db.execute(
+            `SELECT id, name, language, created_by, created_at, updated_at
+             FROM code_file
+             WHERE room_id = ?
+             ORDER BY created_at DESC`,
+            [roomId]
+        );
+        res.json(files);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// GET /api/rooms/:roomId/code/:fileId – preia un fișier (inclusiv conținut)
+router.get('/:fileId', authMiddleware, async (req, res) => {
+    const { roomId, fileId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
+        }
+
+        const file = await getFileIfBelongsToRoom(fileId, roomId);
+        if (!file) return res.status(404).json({ message: 'File not found' });
+        res.json(file);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// POST /api/rooms/:roomId/code – creează un fișier nou
 router.post('/', authMiddleware, async (req, res) => {
-    const { chatId, code, name } = req.body;
+    const { roomId } = req.params;
     const userId = req.user.id;
+    const { name, content, language } = req.body;
 
-    if (!chatId || !code) {
-        return res.status(400).json({ message: 'chatId and code are required' });
+    if (!name || !content) {
+        return res.status(400).json({ message: 'Name and content are required' });
     }
 
     try {
-        const [chatExists] = await db.execute('SELECT id FROM chat WHERE id = ?', [chatId]);
-        if (chatExists.length === 0) {
-            return res.status(404).json({ message: 'Chat not found' });
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
         }
 
-        const allowed = await isParticipant(chatId, userId);
-        if (!allowed) {
-            return res.status(403).json({ message: 'Not authorized to add code to this chat' });
-        }
-
-        const [existing] = await db.execute('SELECT code_id FROM chat WHERE id = ?', [chatId]);
-        if (existing[0].code_id) {
-            return res.status(409).json({ message: 'This chat already has a code snippet. Use PUT to update it.' });
-        }
-
-        const codeId = uuidv4();
+        const fileId = uuidv4();
         await db.execute(
-            'INSERT INTO `code` (id, chat_id, code, name) VALUES (?, ?, ?, ?)',
-            [codeId, chatId, code, name || 'plaintext']
+            `INSERT INTO code_file (id, room_id, name, content, language, created_by)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [fileId, roomId, name, content, language || null, userId]
         );
-        await db.execute('UPDATE `chat` SET code_id = ? WHERE id = ?', [codeId, chatId]);
 
-        res.status(201).json({ codeId });
+        const [newFile] = await db.execute(
+            `SELECT id, name, language, created_by, created_at, updated_at
+             FROM code_file WHERE id = ?`,
+            [fileId]
+        );
+        res.status(201).json(newFile[0]);
     } catch (err) {
-        console.error('Error creating code snippet:', err);
+        console.error(err);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-// UPDATE
-router.put('/:codeId', authMiddleware, async (req, res) => {
-    const { codeId } = req.params;
-    const { code, name } = req.body;
+// PUT /api/rooms/:roomId/code/:fileId – actualizează un fișier
+router.put('/:fileId', authMiddleware, async (req, res) => {
+    const { roomId, fileId } = req.params;
     const userId = req.user.id;
+    const { name, content, language } = req.body;
 
-    if (!code) {
-        return res.status(400).json({ message: 'code is required' });
+    if (!name && !content && !language) {
+        return res.status(400).json({ message: 'At least one field to update is required' });
     }
 
     try {
-        const [codeRows] = await db.execute('SELECT chat_id FROM `code` WHERE id = ?', [codeId]);
-        if (codeRows.length === 0) {
-            return res.status(404).json({ message: 'Code snippet not found' });
-        }
-        const chatId = codeRows[0].chat_id;
-
-        const allowed = await isParticipant(chatId, userId);
-        if (!allowed) {
-            return res.status(403).json({ message: 'Not authorized to update this code' });
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
         }
 
-        await db.execute(
-            'UPDATE `code` SET code = ?, name = ? WHERE id = ?',
-            [code, name || 'plaintext', codeId]
+        const file = await getFileIfBelongsToRoom(fileId, roomId);
+        if (!file) return res.status(404).json({ message: 'File not found' });
+
+        const updates = [];
+        const values = [];
+        if (name !== undefined) {
+            updates.push('name = ?');
+            values.push(name);
+        }
+        if (content !== undefined) {
+            updates.push('content = ?');
+            values.push(content);
+        }
+        if (language !== undefined) {
+            updates.push('language = ?');
+            values.push(language);
+        }
+        values.push(fileId);
+        await db.execute(`UPDATE code_file SET ${updates.join(', ')} WHERE id = ?`, values);
+
+        const [updated] = await db.execute(
+            `SELECT id, name, language, created_by, created_at, updated_at
+             FROM code_file WHERE id = ?`,
+            [fileId]
         );
-
-        res.json({ message: 'Code updated successfully' });
+        res.json(updated[0]);
     } catch (err) {
-        console.error('Error updating code snippet:', err);
+        console.error(err);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-// DELETE
-router.delete('/:codeId', authMiddleware, async (req, res) => {
-    const { codeId } = req.params;
+// DELETE /api/rooms/:roomId/code/:fileId – șterge un fișier
+router.delete('/:fileId', authMiddleware, async (req, res) => {
+    const { roomId, fileId } = req.params;
     const userId = req.user.id;
 
     try {
-        const [codeRows] = await db.execute('SELECT chat_id FROM `code` WHERE id = ?', [codeId]);
-        if (codeRows.length === 0) {
-            return res.status(404).json({ message: 'Code snippet not found' });
-        }
-        const chatId = codeRows[0].chat_id;
-
-        const allowed = await isParticipant(chatId, userId);
-        if (!allowed) {
-            return res.status(403).json({ message: 'Not authorized to delete this code' });
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
         }
 
-        await db.beginTransaction();
+        const file = await getFileIfBelongsToRoom(fileId, roomId);
+        if (!file) return res.status(404).json({ message: 'File not found' });
 
-        await db.execute('DELETE FROM `code` WHERE id = ?', [codeId]);
-        await db.execute('UPDATE `chat` SET code_id = NULL WHERE id = ?', [chatId]);
-
-        await db.commit();
-
-        res.json({ message: 'Code deleted successfully' });
+        await db.execute('DELETE FROM code_file WHERE id = ?', [fileId]);
+        res.json({ message: 'File deleted successfully' });
     } catch (err) {
-        await db.rollback();
-        console.error('Error deleting code snippet:', err);
+        console.error(err);
         res.status(500).json({ message: 'Internal server error' });
     }
 });

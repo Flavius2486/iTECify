@@ -3,173 +3,76 @@ import { v4 as uuidv4 } from 'uuid';
 import db from '../database/db.js';
 import authMiddleware from '../middleware/auth.js';
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true }); // pentru a accesa :roomId
 
-/**
- * GET /api/messages/users
- * Returnează toți utilizatorii cu care utilizatorul autentificat a avut conversații (cel puțin un mesaj text).
- */
-router.get('/users', authMiddleware, async (req, res) => {
-    const userId = req.user.id;
+async function isParticipant(roomId, userId) {
+    const [rows] = await db.execute(
+        'SELECT 1 FROM room_participant WHERE room_id = ? AND user_id = ?',
+        [roomId, userId]
+    );
+    return rows.length > 0;
+}
 
-    try {
-        const query = `
-            SELECT DISTINCT u.id, u.username, u.email
-            FROM \`user\` u
-            WHERE u.id IN (
-                SELECT t.sender_id FROM \`text\` t WHERE t.receiver_id = ?
-                UNION
-                SELECT t.receiver_id FROM \`text\` t WHERE t.sender_id = ?
-            )
-            AND u.id != ?
-            ORDER BY u.username
-        `;
-        const [rows] = await db.execute(query, [userId, userId, userId]);
-
-        res.json(rows);
-    } catch (err) {
-        console.error('Eroare la preluarea utilizatorilor cu conversații:', err);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
-
-/**
- * GET /api/messages/:userId
- * Returnează toate mesajele text schimbate între utilizatorul autentificat și :userId.
- * Fiecare mesaj conține și datele utilizatorilor (username) și, dacă există, codul asociat.
- */
-router.get('/:userId', authMiddleware, async (req, res) => {
-    const currentUserId = req.user.id;
-    const otherUserId = req.params.userId;
-
-    try {
-        const query = `
-            SELECT
-                t.id AS message_id,
-                t.sender_id,
-                t.receiver_id,
-                sender.username AS sender_username,
-                receiver.username AS receiver_username,
-                t.message,
-                t.send_date,
-                c.id AS code_id,
-                c.code,
-                c.name,
-                c.created_at AS code_created_at
-            FROM chat ch
-            INNER JOIN \`text\` t ON ch.text_id = t.id
-            LEFT JOIN \`code\` c ON ch.code_id = c.id
-            INNER JOIN \`user\` sender ON t.sender_id = sender.id
-            INNER JOIN \`user\` receiver ON t.receiver_id = receiver.id
-            WHERE (t.sender_id = ? AND t.receiver_id = ?)
-               OR (t.sender_id = ? AND t.receiver_id = ?)
-              AND NOT (t.sender_id = ? AND t.deleted_by_sender = TRUE)
-              AND NOT (t.receiver_id = ? AND t.deleted_by_receiver = TRUE)
-            ORDER BY t.send_date ASC
-        `;
-        const [rows] = await db.execute(query, [
-            currentUserId, otherUserId,
-            otherUserId, currentUserId,
-            currentUserId, currentUserId
-        ]);
-        res.json(rows);
-    } catch (err) {
-        console.error('Eroare la preluarea mesajelor:', err);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
-
-/**
- * POST /api/messages/:userId
- * Trimite un mesaj text către utilizatorul specificat.
- * Body: { content: string (obligatoriu) }
- */
-router.post('/:userId', authMiddleware, async (req, res) => {
-    const currentUserId = req.user.id;
-    const otherUserId = req.params.userId;
+// POST /api/rooms/:roomId/messages – trimite un mesaj în cameră
+router.post('/', authMiddleware, async (req, res) => {
+    const { roomId } = req.params;
     const { content } = req.body;
+    const userId = req.user.id;
 
     if (!content) {
         return res.status(400).json({ message: 'Message content is required' });
     }
-    if (currentUserId === otherUserId) {
-        return res.status(400).json({ message: 'Cannot send message to yourself' });
-    }
 
     try {
-        // 1. Creează înregistrarea text
-        const textId = uuidv4();
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
+        }
+
+        const messageId = uuidv4();
         await db.execute(
-            'INSERT INTO `text` (id, sender_id, receiver_id, message) VALUES (?, ?, ?, ?)',
-            [textId, currentUserId, otherUserId, content]
+            'INSERT INTO message (id, room_id, user_id, content) VALUES (?, ?, ?, ?)',
+            [messageId, roomId, userId, content]
         );
 
-        // 2. Creează înregistrarea chat care leagă text-ul (fără cod, deocamdată)
-        const chatId = uuidv4();
-        await db.execute(
-            'INSERT INTO `chat` (id, text_id) VALUES (?, ?)',
-            [chatId, textId]
+        const [newMessage] = await db.execute(
+            `SELECT m.id, m.content, m.created_at, u.id as user_id, u.username
+             FROM message m
+             JOIN \`user\` u ON m.user_id = u.id
+             WHERE m.id = ?`,
+            [messageId]
         );
 
-        res.status(201).json({ messageId: textId });
+        res.status(201).json(newMessage[0]);
     } catch (err) {
-        console.error('Eroare la trimiterea mesajului:', err);
+        console.error(err);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-
-/**
- * DELETE /api/messages/chat/:chatId
- * Șterge (marchează) toate mesajele dintr-un chat pentru utilizatorul curent.
- */
-router.delete('/chat/:chatId', authMiddleware, async (req, res) => {
-    const chatId = req.params.chatId;
-    const currentUserId = req.user.id;
+// GET /api/rooms/:roomId/messages – preia toate mesajele din cameră
+router.get('/', authMiddleware, async (req, res) => {
+    const { roomId } = req.params;
+    const userId = req.user.id;
 
     try {
-        // Obține toate text-urile asociate acestui chat
-        const [textRows] = await db.execute(
-            `SELECT t.id, t.sender_id, t.receiver_id
-             FROM chat ch
-             INNER JOIN \`text\` t ON ch.text_id = t.id
-             WHERE ch.id = ?`,
-            [chatId]
+        if (!(await isParticipant(roomId, userId))) {
+            return res.status(403).json({ message: 'Not a participant' });
+        }
+
+        const [messages] = await db.execute(
+            `SELECT m.id, m.content, m.created_at, u.id as user_id, u.username
+             FROM message m
+             JOIN \`user\` u ON m.user_id = u.id
+             WHERE m.room_id = ?
+             ORDER BY m.created_at ASC`,
+            [roomId]
         );
 
-        if (textRows.length === 0) {
-            return res.status(404).json({ message: 'Chat not found' });
-        }
-
-        await db.beginTransaction();
-
-        for (const text of textRows) {
-            if (text.sender_id === currentUserId) {
-                // Current user is the sender
-                await db.execute(
-                    'UPDATE `text` SET deleted_by_sender = TRUE WHERE id = ?',
-                    [text.id]
-                );
-            } else if (text.receiver_id === currentUserId) {
-                // Current user is the receiver
-                await db.execute(
-                    'UPDATE `text` SET deleted_by_receiver = TRUE WHERE id = ?',
-                    [text.id]
-                );
-            }
-        }
-
-        await db.commit();
-
-        res.json({ message: 'Chat deleted for you' });
+        res.json(messages);
     } catch (err) {
-        await db.rollback();
-        console.error('Error deleting chat:', err);
+        console.error(err);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
-
-
-
 
 export default router;

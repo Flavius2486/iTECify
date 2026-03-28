@@ -2,19 +2,21 @@ import 'dotenv/config';
 import express from 'express';
 import { login } from './routes/auth.js';
 import { register } from './routes/register.js';
+import roomsRouter from './routes/rooms.js';
 import messagesRouter from './routes/messages.js';
 import codeRouter from './routes/code.js';
 
 const app = express();
 app.use(express.json());
 
-// Public routes
+// Rute publice
 app.post('/api/login', login);
 app.post('/api/register', register);
 
-// Protected routes
-app.use('/api/messages', messagesRouter);
-app.use('/api/code', codeRouter);
+// Rute protejate
+app.use('/api/rooms', roomsRouter);                         // camere
+app.use('/api/rooms/:roomId/messages', messagesRouter);     // mesaje
+app.use('/api/rooms/:roomId/code', codeRouter);             // fișiere de cod
 
 app.get('/', (req, res) => {
     res.send('Server is running 🚀');

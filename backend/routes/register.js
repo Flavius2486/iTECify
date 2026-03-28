@@ -15,8 +15,8 @@ export const register = async (req, res) => {
         const userId = uuidv4();
 
         const query = `
-            INSERT INTO \`user\` (id, email, username, password, type)
-            VALUES (?, ?, ?, ?, 'human')
+            INSERT INTO \`user\` (id, email, username, password)
+            VALUES (?, ?, ?, ?)
         `;
         await db.execute(query, [userId, email, username, passwordHash]);
 
