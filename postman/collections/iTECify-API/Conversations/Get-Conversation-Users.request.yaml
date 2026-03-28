@@ -1,6 +1,0 @@
-$kind: http-request
-name: Get Conversation Users
-method: GET
-url: '{{baseUrl}}/api/messages/users'
-order: 1000
-description: Returns a list of users the authenticated user has had conversations with.

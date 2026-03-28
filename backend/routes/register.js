@@ -1,7 +1,7 @@
 import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import db from '../db.js';
+import db from '../database/db.js';
 
 export const register = async (req, res) => {
     const { email, username, password } = req.body;

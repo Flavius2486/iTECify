@@ -1,9 +1,0 @@
-$kind: http-request
-name: Get Messages
-method: GET
-url: '{{baseUrl}}/api/messages/:userId'
-order: 4000
-description: Retrieve the full message history for a conversation, ordered by creation time (ascending). Each message includes sender info (id, username, email).
-pathVariables:
-  - key: userId
-    value: abc-123

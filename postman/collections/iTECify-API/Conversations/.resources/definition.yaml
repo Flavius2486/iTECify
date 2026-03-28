@@ -1,7 +1,0 @@
-$kind: collection
-name: Conversations
-auth:
-  type: bearer
-  credentials:
-    - key: token
-      value: '{{token}}'

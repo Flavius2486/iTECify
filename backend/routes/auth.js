@@ -1,6 +1,6 @@
 import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
-import db from '../db.js';
+import db from '../database/db.js';
 
 export const login = async (req, res) => {
     const { identifier, password } = req.body;
