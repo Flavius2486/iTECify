@@ -1,6 +1,6 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import db from '../database/db.js';
+import supabase from '../database/supabase.js';
 import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
@@ -15,8 +15,12 @@ async function generateUniqueJoinCode() {
         for (let i = 0; i < 6; i++) {
             code += characters.charAt(Math.floor(Math.random() * characters.length));
         }
-        const [rows] = await db.execute('SELECT id FROM room WHERE join_code = ?', [code]);
-        exists = rows.length > 0;
+        const { data } = await supabase
+            .from('room')
+            .select('id')
+            .eq('join_code', code)
+            .limit(1);
+        exists = data && data.length > 0;
     } while (exists);
     return code;
 }
@@ -34,22 +38,26 @@ router.post('/', authMiddleware, async (req, res) => {
         const joinCode = await generateUniqueJoinCode();
         const roomId = uuidv4();
 
-        await db.execute(
-            'INSERT INTO room (id, name, join_code, created_by) VALUES (?, ?, ?, ?)',
-            [roomId, name, joinCode, userId]
-        );
+        const { error: roomErr } = await supabase.from('room').insert({
+            id: roomId,
+            name,
+            join_code: joinCode,
+            created_by: userId,
+        });
+        if (roomErr) throw roomErr;
 
-        await db.execute(
-            'INSERT INTO room_participant (room_id, user_id) VALUES (?, ?)',
-            [roomId, userId]
-        );
+        const { error: participantErr } = await supabase.from('room_participant').insert({
+            room_id: roomId,
+            user_id: userId,
+        });
+        if (participantErr) throw participantErr;
 
         res.status(201).json({
             id: roomId,
             name,
             joinCode,
             createdBy: userId,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         });
     } catch (err) {
         console.error(err);
@@ -67,36 +75,42 @@ router.post('/join', authMiddleware, async (req, res) => {
     }
 
     try {
-        const [rooms] = await db.execute(
-            'SELECT id, name, created_by FROM room WHERE join_code = ?',
-            [joinCode.toUpperCase()]
-        );
+        const { data: rooms, error: roomErr } = await supabase
+            .from('room')
+            .select('id, name, created_by')
+            .eq('join_code', joinCode.toUpperCase())
+            .limit(1);
+        if (roomErr) throw roomErr;
 
-        if (rooms.length === 0) {
+        if (!rooms || rooms.length === 0) {
             return res.status(404).json({ message: 'Room not found' });
         }
 
         const room = rooms[0];
 
-        const [existing] = await db.execute(
-            'SELECT 1 FROM room_participant WHERE room_id = ? AND user_id = ?',
-            [room.id, userId]
-        );
+        const { data: existing, error: existErr } = await supabase
+            .from('room_participant')
+            .select('user_id')
+            .eq('room_id', room.id)
+            .eq('user_id', userId)
+            .limit(1);
+        if (existErr) throw existErr;
 
-        if (existing.length > 0) {
+        if (existing && existing.length > 0) {
             return res.status(409).json({ message: 'Already a participant in this room' });
         }
 
-        await db.execute(
-            'INSERT INTO room_participant (room_id, user_id) VALUES (?, ?)',
-            [room.id, userId]
-        );
+        const { error: joinErr } = await supabase.from('room_participant').insert({
+            room_id: room.id,
+            user_id: userId,
+        });
+        if (joinErr) throw joinErr;
 
         res.json({
             id: room.id,
             name: room.name,
             joinCode: joinCode.toUpperCase(),
-            createdBy: room.created_by
+            createdBy: room.created_by,
         });
     } catch (err) {
         console.error(err);
@@ -110,12 +124,14 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const [rooms] = await db.execute(
-            'SELECT created_by FROM room WHERE id = ?',
-            [roomId]
-        );
+        const { data: rooms, error: roomErr } = await supabase
+            .from('room')
+            .select('created_by')
+            .eq('id', roomId)
+            .limit(1);
+        if (roomErr) throw roomErr;
 
-        if (rooms.length === 0) {
+        if (!rooms || rooms.length === 0) {
             return res.status(404).json({ message: 'Room not found' });
         }
 
@@ -123,7 +139,8 @@ router.delete('/:roomId', authMiddleware, async (req, res) => {
             return res.status(403).json({ message: 'Only the creator can delete the room' });
         }
 
-        await db.execute('DELETE FROM room WHERE id = ?', [roomId]);
+        const { error } = await supabase.from('room').delete().eq('id', roomId);
+        if (error) throw error;
 
         res.json({ message: 'Room deleted successfully' });
     } catch (err) {
@@ -137,16 +154,15 @@ router.get('/', authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const query = `
-            SELECT r.id, r.name, r.join_code, r.created_by, r.created_at,
-                   (SELECT COUNT(*) FROM room_participant WHERE room_id = r.id) AS participant_count
-            FROM room r
-            INNER JOIN room_participant rp ON r.id = rp.room_id
-            WHERE rp.user_id = ?
-            ORDER BY r.created_at DESC
-        `;
-        const [rows] = await db.execute(query, [userId]);
-        res.json(rows);
+        const { data, error } = await supabase
+            .from('room_participant')
+            .select('room:room_id (id, name, join_code, created_by, created_at)')
+            .eq('user_id', userId)
+            .order('joined_at', { ascending: false });
+        if (error) throw error;
+
+        const rooms = data.map((row) => row.room);
+        res.json(rooms);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Internal server error' });

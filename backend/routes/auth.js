@@ -1,6 +1,6 @@
-import argon2 from 'argon2';
+﻿import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
-import db from '../database/db.js';
+import supabase from '../database/supabase.js';
 
 export const login = async (req, res) => {
     const { identifier, password } = req.body;
@@ -10,15 +10,14 @@ export const login = async (req, res) => {
     }
 
     try {
-        const query = `
-            SELECT id, username, email, password
-            FROM \`user\`
-            WHERE email = ? OR username = ?
-            LIMIT 1
-        `;
-        const [rows] = await db.execute(query, [identifier, identifier]);
+        const { data: rows, error } = await supabase
+            .from('user')
+            .select('id, username, email, password')
+            .or(`email.eq.${identifier},username.eq.${identifier}`)
+            .limit(1);
 
-        if (rows.length === 0) {
+        if (error) throw error;
+        if (!rows || rows.length === 0) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
