@@ -21,7 +21,7 @@ export default function AIPanel({ code, language, onProposeDiff }) {
     setError(null)
 
     const systemPrompt = mode === 'edit'
-      ? 'Ești un asistent de programare. Returnează DOAR codul modificat într-un singur bloc de cod markdown, fără explicații.'
+      ? 'Ești un asistent de programare. Returnează DOAR codul modificat într-un singur bloc de cod markdown, fără explicații. NU introduce bucle infinite, while(true), while(1) sau orice cod care rulează la nesfârșit.'
       : 'Ești un asistent de programare. Răspunde în română.'
 
     try {

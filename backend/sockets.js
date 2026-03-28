@@ -92,19 +92,33 @@ export default function setupSockets(server) {
             });
         }
         else if (route === 'execute') {
-            // ==========================================
-            // 3. EXECUȚIE COD (Sandboxing Docker)
-            // Conectare: ws://host/execute/:roomId
-            // Mesaj: { action: 'run', language: 'nodejs'|'python', fileId: '...' }
-            // ==========================================
+            // processRef e un obiect shared — poate fi setat din interiorul handleDockerExecution
+            // înainte ca funcția să returneze
+            const processRef = { current: null }
+
             conn.on('message', async (message) => {
                 try {
                     const payload = JSON.parse(message);
-                    if (payload.action === 'run') {
-                        await handleDockerExecution(conn, payload.fileId || room_id, payload.language);
+
+                    if (payload.action === 'stop') {
+                        if (processRef.current) {
+                            processRef.current.kill('SIGKILL')
+                            processRef.current = null
+                            conn.send(JSON.stringify({ type: 'info', data: '\n■ Execuție oprită de utilizator.' }))
+                        }
+                        return
                     }
-                } catch (_) {
-                    conn.send(JSON.stringify({ type: 'error', data: 'Invalid message format.' }));
+
+                    if (payload.action === 'run') {
+                        if (processRef.current) {
+                            processRef.current.kill('SIGKILL')
+                            processRef.current = null
+                        }
+                        await handleDockerExecution(conn, payload.fileId || room_id, payload.language, processRef);
+                    }
+                } catch (err) {
+                    console.error('Execute handler error:', err);
+                    conn.send(JSON.stringify({ type: 'error', data: `Eroare: ${err.message}` }));
                 }
             });
         }
@@ -128,9 +142,97 @@ async function saveFileToDatabase(file_id, doc) {
 }
 
 // ------------------------------------------------------------------
+// SCANARE STATICĂ DE SECURITATE
+// ------------------------------------------------------------------
+function scanForVulnerabilities(code, language) {
+    const rules = {
+        // Comune tuturor limbajelor
+        common: [
+            { pattern: /require\s*\(\s*['"]child_process['"]\s*\)/, msg: 'Acces child_process interzis' },
+            { pattern: /process\.exit/, msg: 'process.exit interzis' },
+            { pattern: /eval\s*\(/, msg: 'eval() interzis' },
+            { pattern: /Function\s*\(/, msg: 'new Function() interzis' },
+        ],
+        python: [
+            { pattern: /os\.system\s*\(/, msg: 'os.system interzis' },
+            { pattern: /subprocess/, msg: 'subprocess interzis' },
+            { pattern: /__import__\s*\(\s*['"]os['"]/, msg: 'import os dinamic interzis' },
+            { pattern: /open\s*\(.*['"]\s*w/, msg: 'scriere pe disk interzisă' },
+            { pattern: /exec\s*\(/, msg: 'exec() interzis' },
+        ],
+        javascript: [
+            { pattern: /require\s*\(\s*['"]fs['"]\s*\)/, msg: 'Acces fs interzis' },
+            { pattern: /require\s*\(\s*['"]net['"]\s*\)/, msg: 'Acces net interzis' },
+            { pattern: /require\s*\(\s*['"]http['"]\s*\)/, msg: 'Acces http interzis' },
+            { pattern: /process\.env/, msg: 'Acces process.env interzis' },
+        ],
+        rust: [
+            { pattern: /std::process::Command/, msg: 'Command execution interzis' },
+            { pattern: /std::fs::write/, msg: 'Scriere pe disk interzisă' },
+        ],
+        cpp: [
+            { pattern: /system\s*\(/, msg: 'system() interzis' },
+            { pattern: /popen\s*\(/, msg: 'popen() interzis' },
+            { pattern: /#include\s*<fstream>/, msg: 'fstream interzis' },
+        ],
+        c: [
+            { pattern: /system\s*\(/, msg: 'system() interzis' },
+            { pattern: /popen\s*\(/, msg: 'popen() interzis' },
+        ],
+    }
+
+    const toCheck = [...(rules.common || []), ...(rules[language] || [])]
+    for (const rule of toCheck) {
+        if (rule.pattern.test(code)) {
+            return { safe: false, reason: rule.msg }
+        }
+    }
+    return { safe: true }
+}
+
+// ------------------------------------------------------------------
+// SCANARE AI – verifică codul cu Groq înainte de execuție
+// ------------------------------------------------------------------
+async function aiScanCode(code, language) {
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-8b-instant',
+                max_tokens: 100,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Ești un analizor de securitate pentru cod. Răspunde DOAR cu JSON: {"safe": true/false, "reason": "motiv scurt"}. Nu adăuga nimic altceva.',
+                    },
+                    {
+                        role: 'user',
+                        content: `Analizează acest cod ${language} și verifică dacă conține: bucle infinite evidente, cod malițios, sau operații periculoase. Cod:\n\`\`\`${language}\n${code.slice(0, 2000)}\n\`\`\``,
+                    },
+                ],
+            }),
+        });
+
+        if (!response.ok) return { safe: true }; // dacă AI nu răspunde, lăsăm să treacă
+
+        const data = await response.json();
+        const content = data.choices[0].message.content.trim();
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) return { safe: true };
+        return JSON.parse(match[0]);
+    } catch {
+        return { safe: true }; // fail open — nu blocăm dacă AI e down
+    }
+}
+
+// ------------------------------------------------------------------
 // SANDBOXING DOCKER
 // ------------------------------------------------------------------
-async function handleDockerExecution(ws, file_id, language) {
+async function handleDockerExecution(ws, file_id, language, processRef = { current: null }) {
     try {
         const { data: rows, error: fetchErr } = await supabase
             .from('code_file')
@@ -147,27 +249,34 @@ async function handleDockerExecution(ws, file_id, language) {
 
         const code = rows[0].content;
 
-        // Securitate: blocăm apeluri sistem periculoase
-        const banned = ['require("child_process")', "require('child_process')", 'os.system', 'subprocess', '__import__("os")', 'process.exit'];
-        if (banned.some(b => code.includes(b))) {
-            ws.send(JSON.stringify({ type: 'error', data: '🔒 Securitate: Cod interzis detectat!' }));
+        // Scanare statică
+        const scan = scanForVulnerabilities(code, language);
+        if (!scan.safe) {
+            ws.send(JSON.stringify({ type: 'error', data: `🔒 Securitate: ${scan.reason}` }));
             return;
         }
 
+        // Scanare AI
+        ws.send(JSON.stringify({ type: 'info', data: '🤖 Scanare AI în curs...' }));
+        const aiScan = await aiScanCode(code, language);
+        if (!aiScan.safe) {
+            ws.send(JSON.stringify({ type: 'error', data: `🔒 AI Security: ${aiScan.reason}` }));
+            return;
+        }
+
+        ws.send(JSON.stringify({ type: 'info', data: `✓ Scanare OK. Pornesc containerul pentru ${language}...\n` }));
+
         // Configurare per limbaj
-        const LANG_CONFIG = {
-            javascript: { image: 'node:18-alpine',    ext: 'js',  cmd: (f) => ['node', f] },
-            typescript: { image: 'node:18-alpine',    ext: 'ts',  cmd: (f) => ['npx', '--yes', 'tsx', f] },
+        const LANG_CONFIG = {            javascript: { image: 'node:18-alpine',     ext: 'js',  cmd: (f) => ['node', f] },
+            typescript: { image: 'node:18-alpine',     ext: 'ts',  cmd: (f) => ['npx', '--yes', 'tsx', f] },
             python:     { image: 'python:3.11-alpine', ext: 'py',  cmd: (f) => ['python', f] },
-            cpp:        { image: 'gcc:13',             ext: 'cpp', cmd: (f, base) => ['sh', '-c', `g++ -o /tmp/out ${f} && /tmp/out`] },
+            cpp:        { image: 'gcc:13',             ext: 'cpp', cmd: (f) => ['sh', '-c', `g++ -o /tmp/out ${f} && /tmp/out`] },
             c:          { image: 'gcc:13',             ext: 'c',   cmd: (f) => ['sh', '-c', `gcc -o /tmp/out ${f} && /tmp/out`] },
             rust:       { image: 'rust:1.78-alpine',   ext: 'rs',  cmd: (f) => ['sh', '-c', `rustc ${f} -o /tmp/out && /tmp/out`] },
             go:         { image: 'golang:1.22-alpine', ext: 'go',  cmd: (f) => ['go', 'run', f] },
         };
 
         const lang = LANG_CONFIG[language] || LANG_CONFIG['python'];
-
-        ws.send(JSON.stringify({ type: 'info', data: `Pregătesc containerul Docker pentru ${language}...\n` }));
 
         const tempDir = path.resolve('./temp_exec');
         await fs.mkdir(tempDir, { recursive: true });
@@ -180,25 +289,54 @@ async function handleDockerExecution(ws, file_id, language) {
 
         const dockerArgs = [
             'run', '--rm',
-            '-m', '128m',
+            '--memory', '128m',
+            '--cpus', '0.5',
             '--network', 'none',
             '-v', `${tempDir}:/usr/src/app`,
             lang.image,
             ...lang.cmd(containerFile),
         ];
 
-        const dockerProcess = spawn('docker', dockerArgs);
+        console.log('[Docker] cmd:', 'docker', dockerArgs.join(' '));
 
-        dockerProcess.stdout.on('data', (data) => ws.send(JSON.stringify({ type: 'stdout', data: data.toString() })));
+        const dockerProcess = spawn('docker', dockerArgs);
+        processRef.current = dockerProcess;
+        console.log('[Docker] pid:', dockerProcess.pid);
+
+        // Timeout 30s
+        const timeout = setTimeout(() => {
+            dockerProcess.kill('SIGKILL')
+            ws.send(JSON.stringify({ type: 'error', data: '\n⏱ Timeout: execuția a depășit 30 secunde.' }))
+        }, 30000);
+
+        // Limită output — dacă produce >512KB, kill (buclă infinită cu print)
+        let totalOutput = 0;
+        const OUTPUT_LIMIT = 512 * 1024;
+
+        dockerProcess.stdout.on('data', (data) => {
+            totalOutput += data.length;
+            if (totalOutput > OUTPUT_LIMIT) {
+                dockerProcess.kill('SIGKILL');
+                ws.send(JSON.stringify({ type: 'error', data: '\n🔒 Output limitat: prea mult output generat (posibilă buclă infinită).' }));
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'stdout', data: data.toString() }));
+        });
         dockerProcess.stderr.on('data', (data) => ws.send(JSON.stringify({ type: 'stderr', data: data.toString() })));
 
         dockerProcess.on('close', async (exitCode) => {
-            ws.send(JSON.stringify({ type: 'info', data: `\nContainer terminat cu status: ${exitCode}.` }));
+            clearTimeout(timeout);
+            processRef.current = null;
+            ws.send(JSON.stringify({ type: 'info', data: `\n— Container terminat cu status: ${exitCode} —` }));
             try { await fs.unlink(filePath); } catch (_) {}
         });
+
+        return dockerProcess;
 
     } catch (err) {
         console.error('Docker Execution error:', err);
         ws.send(JSON.stringify({ type: 'error', data: 'Eroare fatală la execuția Docker.' }));
+        processRef.current = null;
+        return null;
     }
 }

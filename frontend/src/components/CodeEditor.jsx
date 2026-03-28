@@ -6,8 +6,9 @@ export default function CodeEditor({ roomId, fileId, code, language, onChange, d
   const [editor, setEditor] = useState(null)
   const { setContent } = useCollaboration(editor, roomId, fileId)
   const decorationsRef = useRef([])
+  const originalCodeRef = useRef(code)
 
-  // Aplică decorations de diff când diffCode se schimbă
+  // Aplică diff când diffCode se schimbă
   useEffect(() => {
     if (!editor) return
 
@@ -16,7 +17,12 @@ export default function CodeEditor({ roomId, fileId, code, language, onChange, d
 
     if (!diffCode) return
 
-    const originalLines = code.split('\n')
+    // Salvăm codul curent din model ÎNAINTE de a aplica diff-ul
+    const model = editor.getModel()
+    if (!model) return
+    originalCodeRef.current = model.getValue()
+
+    const originalLines = originalCodeRef.current.split('\n')
     const modifiedLines = diffCode.split('\n')
     const newDecorations = []
 
@@ -25,33 +31,14 @@ export default function CodeEditor({ roomId, fileId, code, language, onChange, d
       const orig = originalLines[i]
       const mod = modifiedLines[i]
       if (orig === mod) continue
-
-      if (mod !== undefined && orig !== undefined) {
-        // Linie modificată — arată versiunea nouă cu verde
-        newDecorations.push({
-          range: { startLineNumber: i + 1, startColumn: 1, endLineNumber: i + 1, endColumn: 1 },
-          options: {
-            isWholeLine: true,
-            className: 'diff-added-line',
-            glyphMarginClassName: 'diff-glyph-added',
-          },
-        })
-      } else if (mod !== undefined) {
-        // Linie adăugată
-        newDecorations.push({
-          range: { startLineNumber: i + 1, startColumn: 1, endLineNumber: i + 1, endColumn: 1 },
-          options: { isWholeLine: true, className: 'diff-added-line' },
-        })
-      }
+      newDecorations.push({
+        range: { startLineNumber: i + 1, startColumn: 1, endLineNumber: i + 1, endColumn: 1 },
+        options: { isWholeLine: true, className: 'diff-added-line' },
+      })
     }
 
-    // Setăm valoarea editorului la codul propus ca să vedem modificările
-    const model = editor.getModel()
-    if (model) {
-      const currentValue = model.getValue()
-      if (currentValue !== diffCode) {
-        model.setValue(diffCode)
-      }
+    if (model.getValue() !== diffCode) {
+      model.setValue(diffCode)
     }
 
     decorationsRef.current = editor.deltaDecorations([], newDecorations)
@@ -68,16 +55,14 @@ export default function CodeEditor({ roomId, fileId, code, language, onChange, d
   }
 
   function handleReject() {
-    // Restaurăm codul original
     const model = editor?.getModel()
-    if (model) model.setValue(code)
+    if (model) model.setValue(originalCodeRef.current)
     decorationsRef.current = editor?.deltaDecorations(decorationsRef.current, []) || []
     onReject?.()
   }
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Banner Accept / Reject — vizibil doar în mod diff */}
       {diffCode !== null && diffCode !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', background: '#1a1a2e', borderBottom: '1px solid #333', flexShrink: 0 }}>
           <span style={{ color: '#CECBF6', fontSize: 12 }}>✨ Propunere AI — verifică modificările</span>
@@ -94,7 +79,6 @@ export default function CodeEditor({ roomId, fileId, code, language, onChange, d
 
       <style>{`
         .diff-added-line { background: rgba(40, 120, 40, 0.25) !important; }
-        .diff-removed-line { background: rgba(180, 40, 40, 0.25) !important; }
       `}</style>
 
       <Editor
