@@ -29,7 +29,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
         const { data: messages, error: msgErr } = await supabase
             .from('message')
-            .select('id, user_id, content, created_at, user:user_id (username)')
+            .select('id, user_id, content, created_at')
             .eq('room_id', roomId)
             .order('created_at', { ascending: true });
         if (msgErr) throw msgErr;

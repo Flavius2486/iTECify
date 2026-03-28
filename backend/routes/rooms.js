@@ -2,6 +2,8 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import supabase from '../database/supabase.js';
 import authMiddleware from '../middleware/auth.js';
+import messagesRouter from './messages.js';
+import codeRouter from './code.js';
 
 const router = express.Router();
 
@@ -157,16 +159,21 @@ router.get('/', authMiddleware, async (req, res) => {
         const { data, error } = await supabase
             .from('room_participant')
             .select('room:room_id (id, name, join_code, created_by, created_at)')
-            .eq('user_id', userId)
-            .order('joined_at', { ascending: false });
+            .eq('user_id', userId);
         if (error) throw error;
 
-        const rooms = data.map((row) => row.room);
+        const rooms = data
+            .map((row) => row.room)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         res.json(rooms);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+// Sub-routere pentru mesaje și cod
+router.use('/:roomId/messages', messagesRouter);
+router.use('/:roomId/code', codeRouter);
 
 export default router;

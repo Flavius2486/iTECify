@@ -15,8 +15,6 @@ app.post('/api/register', register);
 
 // Rute protejate
 app.use('/api/rooms', roomsRouter);                         // camere
-app.use('/api/rooms/:roomId/messages', messagesRouter);     // mesaje
-app.use('/api/rooms/:roomId/code', codeRouter);             // fișiere de cod
 
 app.get('/', (req, res) => {
     res.send('Server is running 🚀');

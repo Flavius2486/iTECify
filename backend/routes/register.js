@@ -14,7 +14,7 @@ export const register = async (req, res) => {
         const { data: existingUsers, error: existingErr } = await supabase
             .from('user')
             .select('id')
-            .or(`email.eq.${email},username.eq.${username}`)
+            .or(`email.eq."${email}",username.eq."${username}"`)
             .limit(1);
 
         if (existingErr) throw existingErr;
@@ -31,7 +31,6 @@ export const register = async (req, res) => {
                 email,
                 username,
                 password: passwordHash,
-                type: 'human',
             },
         ]);
         if (insertErr) throw insertErr;

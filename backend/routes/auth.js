@@ -13,7 +13,7 @@ export const login = async (req, res) => {
         const { data: rows, error } = await supabase
             .from('user')
             .select('id, username, email, password')
-            .or(`email.eq.${identifier},username.eq.${identifier}`)
+            .or(`email.eq."${identifier}",username.eq."${identifier}"`)
             .limit(1);
 
         if (error) throw error;
