@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react'
-import { auth } from '../services/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import { getUser, isAuthenticated } from '../services/auth'
 
 export function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u)
-      setLoading(false)
-    })
-    return unsub
+    if (isAuthenticated()) {
+      setUser(getUser())
+    }
+    setLoading(false)
   }, [])
 
-  return { user, loading }
+  return { user, loading, setUser }
 }

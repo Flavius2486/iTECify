@@ -11,19 +11,11 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - PORT=3000
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=itecify
     env_file:
       - ./.env
     volumes:
       - ./backend:/app
       - /app/node_modules
-    depends_on:
-      mysql:
-        condition: service_healthy
     restart: unless-stopped
     develop:
       watch:
@@ -33,22 +25,12 @@ services:
           ignore:
             - node_modules
 
-  mysql:
-    image: mysql:8
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "3307:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=itecify
-    volumes:
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - "5173:5173"
+    depends_on:
+      - backend
     restart: unless-stopped
-
-volumes:
-  mysql_data:

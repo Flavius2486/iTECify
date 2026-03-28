@@ -76,8 +76,11 @@ export default function setupSockets(server) {
             conn.on('message', (message) => {
                 try {
                     const payload = JSON.parse(message);
-                    // Rebroadcast la toți ceilalți din cameră
-                    if (payload.action === 'file_created' || payload.action === 'file_deleted') {
+                    if (
+                        payload.action === 'file_created' ||
+                        payload.action === 'file_deleted' ||
+                        payload.action === 'chat_message'
+                    ) {
                         broadcastToRoom(room_id, payload, conn);
                     }
                 } catch (_) {}
@@ -144,33 +147,44 @@ async function handleDockerExecution(ws, file_id, language) {
 
         const code = rows[0].content;
 
-        if (code.includes('require("child_process")') || code.includes('os.system')) {
-            ws.send(JSON.stringify({ type: 'error', data: '🔒 Securitate: Execuția de comenzi sistem este interzisă!' }));
+        // Securitate: blocăm apeluri sistem periculoase
+        const banned = ['require("child_process")', "require('child_process')", 'os.system', 'subprocess', '__import__("os")', 'process.exit'];
+        if (banned.some(b => code.includes(b))) {
+            ws.send(JSON.stringify({ type: 'error', data: '🔒 Securitate: Cod interzis detectat!' }));
             return;
         }
 
-        ws.send(JSON.stringify({ type: 'info', data: 'Vulnerabilități verificate. Pregătesc containerul Docker...\n' }));
+        // Configurare per limbaj
+        const LANG_CONFIG = {
+            javascript: { image: 'node:18-alpine',    ext: 'js',  cmd: (f) => ['node', f] },
+            typescript: { image: 'node:18-alpine',    ext: 'ts',  cmd: (f) => ['npx', '--yes', 'tsx', f] },
+            python:     { image: 'python:3.11-alpine', ext: 'py',  cmd: (f) => ['python', f] },
+            cpp:        { image: 'gcc:13',             ext: 'cpp', cmd: (f, base) => ['sh', '-c', `g++ -o /tmp/out ${f} && /tmp/out`] },
+            c:          { image: 'gcc:13',             ext: 'c',   cmd: (f) => ['sh', '-c', `gcc -o /tmp/out ${f} && /tmp/out`] },
+            rust:       { image: 'rust:1.78-alpine',   ext: 'rs',  cmd: (f) => ['sh', '-c', `rustc ${f} -o /tmp/out && /tmp/out`] },
+            go:         { image: 'golang:1.22-alpine', ext: 'go',  cmd: (f) => ['go', 'run', f] },
+        };
+
+        const lang = LANG_CONFIG[language] || LANG_CONFIG['python'];
+
+        ws.send(JSON.stringify({ type: 'info', data: `Pregătesc containerul Docker pentru ${language}...\n` }));
 
         const tempDir = path.resolve('./temp_exec');
         await fs.mkdir(tempDir, { recursive: true });
 
         const fileHash = crypto.randomUUID();
-        const extensions = { nodejs: 'js', python: 'py', rust: 'rs' };
-        const ext = extensions[language] || 'txt';
-        const filePath = path.join(tempDir, `${fileHash}.${ext}`);
+        const filePath = path.join(tempDir, `${fileHash}.${lang.ext}`);
+        const containerFile = `/usr/src/app/${fileHash}.${lang.ext}`;
 
         await fs.writeFile(filePath, code);
-
-        const dockerImage = language === 'nodejs' ? 'node:18-alpine' : 'python:3.10-alpine';
-        const runCmd = language === 'nodejs' ? 'node' : 'python';
 
         const dockerArgs = [
             'run', '--rm',
             '-m', '128m',
             '--network', 'none',
             '-v', `${tempDir}:/usr/src/app`,
-            dockerImage,
-            runCmd, `/usr/src/app/${fileHash}.${ext}`,
+            lang.image,
+            ...lang.cmd(containerFile),
         ];
 
         const dockerProcess = spawn('docker', dockerArgs);

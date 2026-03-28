@@ -47,8 +47,8 @@ router.post('/', authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { name, content, language } = req.body;
 
-    if (!name || !content) {
-        return res.status(400).json({ message: 'name and content are required' });
+    if (!name) {
+        return res.status(400).json({ message: 'name is required' });
     }
 
     try {
@@ -61,7 +61,7 @@ router.post('/', authMiddleware, async (req, res) => {
             id: fileId,
             room_id: roomId,
             name,
-            content,
+            content: content ?? '',
             language: language || 'plaintext',
             created_by: userId,
         });
@@ -80,7 +80,7 @@ router.put('/:fileId', authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { name, content, language } = req.body;
 
-    if (!content) {
+    if (content === undefined) {
         return res.status(400).json({ message: 'content is required' });
     }
 

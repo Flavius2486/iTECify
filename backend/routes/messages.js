@@ -34,7 +34,21 @@ router.get('/', authMiddleware, async (req, res) => {
             .order('created_at', { ascending: true });
         if (msgErr) throw msgErr;
 
-        res.json(messages);
+        // Luăm username-urile pentru toți user_id unici
+        const userIds = [...new Set(messages.map(m => m.user_id))];
+        const { data: users } = await supabase
+            .from('user')
+            .select('id, username')
+            .in('id', userIds);
+
+        const usernameMap = Object.fromEntries((users || []).map(u => [u.id, u.username]));
+
+        const result = messages.map(m => ({
+            ...m,
+            username: usernameMap[m.user_id] || null,
+        }));
+
+        res.json(result);
     } catch (err) {
         console.error('Error fetching messages:', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -65,7 +79,17 @@ router.post('/', authMiddleware, async (req, res) => {
         });
         if (error) throw error;
 
-        res.status(201).json({ messageId });
+        // Luăm username-ul pentru broadcast
+        const { data: userData } = await supabase
+            .from('user')
+            .select('username')
+            .eq('id', userId)
+            .limit(1);
+
+        res.status(201).json({
+            messageId,
+            username: userData?.[0]?.username || null,
+        });
     } catch (err) {
         console.error('Error sending message:', err);
         res.status(500).json({ message: 'Internal server error' });

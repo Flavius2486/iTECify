@@ -3,21 +3,23 @@ import { WebsocketProvider } from 'y-websocket'
 import { MonacoBinding } from 'y-monaco'
 import { useEffect, useRef } from 'react'
 
-export function useCollaboration(editor, roomId) {
+const WS_BASE = 'ws://localhost:3000'
+
+export function useCollaboration(editor, roomId, fileId) {
   const docRef = useRef(null)
   const providerRef = useRef(null)
 
   useEffect(() => {
-    if (!editor) return
+    if (!editor || !roomId || !fileId) return
 
     const doc = new Y.Doc()
     const provider = new WebsocketProvider(
-      'ws://localhost:1234',
-      roomId,
+      `${WS_BASE}/collab/${roomId}`,
+      fileId,
       doc
     )
 
-    const type = doc.getText('monaco')
+    const type = doc.getText('collab-code')
 
     const binding = new MonacoBinding(
       type,
@@ -33,6 +35,19 @@ export function useCollaboration(editor, roomId) {
       binding.destroy()
       provider.destroy()
       doc.destroy()
+      docRef.current = null
     }
-  }, [editor, roomId])
+  }, [editor, roomId, fileId])
+
+  function setContent(newCode) {
+    const doc = docRef.current
+    if (!doc) return
+    const type = doc.getText('collab-code')
+    doc.transact(() => {
+      type.delete(0, type.length)
+      type.insert(0, newCode)
+    })
+  }
+
+  return { doc: docRef, provider: providerRef, setContent }
 }
