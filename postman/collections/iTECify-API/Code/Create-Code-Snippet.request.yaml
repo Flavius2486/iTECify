@@ -1,0 +1,19 @@
+$kind: http-request
+name: Create Code Snippet
+method: POST
+url: '{{baseUrl}}/api/code'
+order: 1000
+description: 'Creates a code snippet for a chat. Requires chatId and code in the body. Returns the codeId on success (201).'
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Authorization
+    value: 'Bearer {{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "chatId": "some-chat-id",
+      "code": "console.log('hello world');",
+      "name": "javascript"
+    }

@@ -1,0 +1,12 @@
+$kind: collection
+name: iTECify API
+description: Backend API for the iTECify messaging application. Base URL: http://localhost:3000
+variables:
+  - key: baseUrl
+    value: 'http://localhost:3000'
+    type: default
+    enabled: true
+  - key: token
+    value: ''
+    type: default
+    enabled: true

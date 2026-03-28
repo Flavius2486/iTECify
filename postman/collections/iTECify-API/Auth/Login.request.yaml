@@ -1,0 +1,21 @@
+$kind: http-request
+name: Login
+method: POST
+url: '{{baseUrl}}/api/login'
+order: 2000
+description: Login with email or username as identifier. Returns a JWT token and user object on success. The token is saved to the `token` collection variable.
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "identifier": "user@example.com",
+      "password": "mypassword"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set("token", pm.response.json().token);

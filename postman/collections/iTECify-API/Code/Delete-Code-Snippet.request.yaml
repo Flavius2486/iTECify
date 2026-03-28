@@ -1,0 +1,12 @@
+$kind: http-request
+name: Delete Code Snippet
+method: DELETE
+url: '{{baseUrl}}/api/code/:codeId'
+order: 3000
+description: 'Deletes a code snippet and unlinks it from the chat.'
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+pathVariables:
+  - key: codeId
+    value: some-code-id

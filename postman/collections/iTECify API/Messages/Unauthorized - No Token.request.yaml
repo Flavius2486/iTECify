@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Unauthorized - No Token'
+method: GET
+url: '{{baseUrl}}/api/messages/users'
+order: 5000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 401 without token", () => pm.response.to.have.status(401));

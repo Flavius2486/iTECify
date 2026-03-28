@@ -1,8 +1,8 @@
-const argon2 = require('argon2');
-const jwt = require('jsonwebtoken');
-const supabase = require('../db');
+import argon2 from 'argon2';
+import jwt from 'jsonwebtoken';
+import db from '../db.js';
 
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
     const { identifier, password } = req.body;
 
     if (!identifier || !password) {
@@ -10,17 +10,20 @@ exports.login = async (req, res) => {
     }
 
     try {
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('id, email, username, password_hash')
-            .or(`email.eq.${identifier},username.eq.${identifier}`)
-            .single();
+        const query = `
+            SELECT id, username, email, password
+            FROM \`user\`
+            WHERE email = ? OR username = ?
+            LIMIT 1
+        `;
+        const [rows] = await db.execute(query, [identifier, identifier]);
 
-        if (error || !user) {
+        if (rows.length === 0) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const ok = await argon2.verify(user.password_hash, password);
+        const user = rows[0];
+        const ok = await argon2.verify(user.password, password);
         if (!ok) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
@@ -40,7 +43,8 @@ exports.login = async (req, res) => {
             },
         });
     } catch (err) {
-        console.error(err);
+        console.error('Login error:', err);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+

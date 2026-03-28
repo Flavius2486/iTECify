@@ -1,0 +1,33 @@
+$kind: http-request
+name: Create Code Snippet
+method: POST
+url: '{{baseUrl}}/api/code'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "chatId": "{{chatId}}",
+      "code": "console.log('Hello World');",
+      "name": "javascript"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 201 or 404 or 409", () => {
+        pm.expect([201, 404, 409]).to.include(pm.response.code);
+      });
+      pm.test("Response has expected structure", () => {
+        const json = pm.response.json();
+        pm.expect(json).to.be.an('object');
+      });
+      const json = pm.response.json();
+      if (json.codeId) {
+        pm.environment.set('codeId', json.codeId);
+      }

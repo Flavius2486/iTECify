@@ -1,8 +1,9 @@
-const argon2 = require('argon2');
-const jwt = require('jsonwebtoken');
-const supabase = require('../db');
+import argon2 from 'argon2';
+import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db.js';
 
-exports.register = async (req, res) => {
+export const register = async (req, res) => {
     const { email, username, password } = req.body;
 
     if (!email || !username || !password) {
@@ -11,19 +12,15 @@ exports.register = async (req, res) => {
 
     try {
         const passwordHash = await argon2.hash(password);
+        const userId = uuidv4();
 
-        const { data: user, error } = await supabase
-            .from('users')
-            .insert([{ email, username, password_hash: passwordHash }])
-            .select('id, email, username')
-            .single();
+        const query = `
+            INSERT INTO \`user\` (id, email, username, password, type)
+            VALUES (?, ?, ?, ?, 'human')
+        `;
+        await db.execute(query, [userId, email, username, passwordHash]);
 
-        if (error) {
-            if (error.code === '23505') { // duplicate key
-                return res.status(409).json({ message: 'Email or username already exists' });
-            }
-            throw error;
-        }
+        const user = { id: userId, email, username };
 
         const token = jwt.sign(
             { id: user.id, email: user.email, username: user.username },
@@ -33,7 +30,10 @@ exports.register = async (req, res) => {
 
         res.status(201).json({ token, user });
     } catch (err) {
-        console.error(err);
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'Email or username already exists' });
+        }
+        console.error('Register error:', err);
         res.status(500).json({ message: 'Error creating user' });
     }
 };

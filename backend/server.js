@@ -1,18 +1,20 @@
-require('dotenv').config();
-const express = require('express');
-const auth = require('./routes/auth');
-const register = require('./routes/register');
-const conversationsRouter = require('./routes/conversations');
+import 'dotenv/config';
+import express from 'express';
+import { login } from './routes/auth.js';
+import { register } from './routes/register.js';
+import messagesRouter from './routes/messages.js';
+import codeRouter from './routes/code.js';
 
 const app = express();
 app.use(express.json());
 
-// Rute publice
-app.post('/api/auth/login', auth.login);
-app.post('/api/register', register.register);
+// Public routes
+app.post('/api/login', login);
+app.post('/api/register', register);
 
-// Rute protejate
-app.use('/api/conversations', conversationsRouter);
+// Protected routes
+app.use('/api/messages', messagesRouter);
+app.use('/api/code', codeRouter);
 
 app.get('/', (req, res) => {
     res.send('Server is running 🚀');
