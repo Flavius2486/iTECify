@@ -74,10 +74,8 @@ export default function AIPanel({ code, language, onProposeDiff }) {
     : ['Corectează erorile', 'Optimizează', 'Adaugă comentarii', 'Curăță codul']
 
   return (
-    <div style={{ width: 260, background: '#252526', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-
-      {/* Header */}
-      <div style={{ padding: '8px 10px', borderBottom: '1px solid #111', flexShrink: 0 }}>
+    <div style={{ width: 260, background: 'transparent', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(200,160,255,0.1)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>✨</span>
           <span style={{ color: '#CECBF6', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -132,9 +130,9 @@ export default function AIPanel({ code, language, onProposeDiff }) {
       </div>
 
       {/* Input area */}
-      <div style={{ borderTop: '1px solid #111', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+      <div style={{ borderTop: '1px solid rgba(200,160,255,0.1)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
         {/* Toggle Edit / Chat */}
-        <div style={{ display: 'flex', background: '#1e1e1e', borderRadius: 4, overflow: 'hidden', alignSelf: 'flex-start' }}>
+        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden', alignSelf: 'flex-start' }}>
           <button
             onClick={() => setMode('chat')}
             style={{ padding: '4px 12px', background: mode === 'chat' ? '#534AB7' : 'transparent', color: mode === 'chat' ? '#fff' : '#888', border: 'none', fontSize: 11, cursor: 'pointer' }}
@@ -156,7 +154,7 @@ export default function AIPanel({ code, language, onProposeDiff }) {
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
             placeholder={mode === 'edit' ? 'Ce modificări să facă AI?' : 'Întreabă ceva despre cod...'}
             rows={2}
-            style={{ flex: 1, background: '#1e1e1e', border: '1px solid #444', borderRadius: 4, padding: '5px 8px', color: '#fff', fontSize: 12, resize: 'none', outline: 'none', fontFamily: 'inherit' }}
+            style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(200,160,255,0.15)', borderRadius: 4, padding: '5px 8px', color: '#fff', fontSize: 12, resize: 'none', outline: 'none', fontFamily: 'inherit' }}
           />
           <button
             onClick={handleSend}

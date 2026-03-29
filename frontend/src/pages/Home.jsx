@@ -94,9 +94,10 @@ export default function Home({ onLogout }) {
   })
 
   const glass = {
-    background: 'rgba(8, 12, 30, 0.65)',
-    backdropFilter: 'blur(14px)',
-    border: '1px solid rgba(130, 160, 255, 0.15)',
+    background: 'rgba(8, 12, 30, 0.35)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(130, 160, 255, 0.12)',
     borderRadius: 12,
   }
 
@@ -117,10 +118,10 @@ export default function Home({ onLogout }) {
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
         {/* Roomurile mele */}
-        <div style={{ ...glass, padding: 24, width: 280 }}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, margin: '0 0 12px' }}>Roomurile mele</p>
+        <div style={{ ...glass, padding: 24, width: 280, maxHeight: '60vh', display: 'flex', flexDirection: 'column' }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, margin: '0 0 12px', flexShrink: 0 }}>Roomurile mele</p>
           {rooms.length === 0 && <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Nu ai roomuri încă</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }} className="custom-scroll">
             {rooms.map(r => {
               const isAdmin = (r.admin_id || r.created_by) === user?.id
               const adminUsername = r.admin?.username || null
@@ -128,7 +129,7 @@ export default function Home({ onLogout }) {
               <div
                 key={r.id}
                 onClick={() => navigate(`/room/${r.id}`)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(130,160,255,0.1)', transition: 'background 0.15s' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(130,160,255,0.08)', transition: 'background 0.15s' }}
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

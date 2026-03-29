@@ -286,22 +286,26 @@ export default function EditorPage({ onLogout }) {
         onLeave={handleLeaveRoom}
       />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <LeftSidebar
-          roomId={roomId}
-          roomWs={roomWs}
-          files={files}
-          fileErrors={fileErrors}
-          activeFileId={activeFile?.id}
-          onFileSelect={setActiveFile}
-          onNewFile={handleNewFile}
-          onDeleteFile={handleDeleteFile}
-          onUploadFile={handleUploadFile}
-          colorMap={colorMap}
-          participants={participants}
-          setParticipants={setParticipants}
-          adminId={adminId}
-          onKick={handleKick}
-        />
+        {/* Sidebar — nuanță albastru-indigo */}
+        <div style={{ background: 'rgba(10,15,40,0.55)', backdropFilter: 'blur(16px)', borderRight: '1px solid rgba(100,130,255,0.15)' }}>
+          <LeftSidebar
+            roomId={roomId}
+            roomWs={roomWs}
+            files={files}
+            fileErrors={fileErrors}
+            activeFileId={activeFile?.id}
+            onFileSelect={setActiveFile}
+            onNewFile={handleNewFile}
+            onDeleteFile={handleDeleteFile}
+            onUploadFile={handleUploadFile}
+            colorMap={colorMap}
+            participants={participants}
+            setParticipants={setParticipants}
+            adminId={adminId}
+            onKick={handleKick}
+          />
+        </div>
+
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {activeFile ? (
@@ -317,32 +321,33 @@ export default function EditorPage({ onLogout }) {
                 onErrorsChange={handleErrorsChange}
                 aiLines={activeFile?.ai_lines || []}
                 onAiLinesChange={async (fId, lines) => {
-                  // Actualizăm local
                   setFiles(prev => prev.map(f => f.id === fId ? { ...f, ai_lines: lines } : f))
                   setActiveFile(prev => prev?.id === fId ? { ...prev, ai_lines: lines } : prev)
-                  // Salvăm în DB
                   try {
                     await api.updateFile(roomId, fId, activeFile.content, activeFile.name, activeFile.language, lines)
                   } catch (e) { console.error(e) }
-                  // Broadcast la ceilalți
                   roomWsRef.current?.send(JSON.stringify({ action: 'ai_lines_update', fileId: fId, aiLines: lines }))
                 }}
                 colorMap={colorMap}
                 myId={me?.id}
               />
             ) : (
-              <div style={{ color: '#666', padding: 20, fontSize: 13 }}>Selectează sau creează un fișier</div>
+              <div style={{ color: 'rgba(255,255,255,0.3)', padding: 20, fontSize: 13 }}>Selectează sau creează un fișier</div>
             )}
           </div>
-          <div style={{ height: 200, borderTop: '1px solid #333' }}>
+          {/* Terminal — nuanță verde-teal închis */}
+          <div style={{ height: 200, borderTop: '1px solid rgba(0,200,150,0.12)', background: 'rgba(0,20,18,0.6)', backdropFilter: 'blur(12px)' }}>
             <Terminal roomId={roomId} fileId={activeFile?.id} language={language} code={activeFile?.content || ''} />
           </div>
         </div>
-        <Chat roomId={roomId} roomWs={roomWs} />
 
-        {/* Panou AI expandabil */}
-        <div style={{ display: 'flex', borderLeft: '1px solid #111', flexShrink: 0 }}>
-        {/* Buton toggle */}
+        {/* Chat — nuanță violet-mov */}
+        <div style={{ background: 'rgba(20,10,40,0.55)', backdropFilter: 'blur(16px)', borderLeft: '1px solid rgba(160,100,255,0.15)' }}>
+          <Chat roomId={roomId} roomWs={roomWs} />
+        </div>
+
+        {/* Panou AI expandabil — nuanță auriu-violet */}
+        <div style={{ display: 'flex', borderLeft: '1px solid rgba(200,160,255,0.12)', flexShrink: 0 }}>
           <button
             onClick={() => setAiOpen(o => !o)}
             title={aiOpen ? 'Închide AI' : 'Deschide AI'}
@@ -352,9 +357,11 @@ export default function EditorPage({ onLogout }) {
               width: 28,
               height: 'auto',
               padding: '12px 6px',
-              background: aiOpen ? '#534AB7' : '#2d2b3d',
+              background: aiOpen
+                ? 'rgba(120,80,220,0.5)'
+                : 'rgba(15,8,35,0.5)',
+              backdropFilter: 'blur(16px)',
               border: 'none',
-              borderLeft: '1px solid #111',
               cursor: 'pointer',
               color: '#CECBF6',
               fontSize: 11,
@@ -365,17 +372,18 @@ export default function EditorPage({ onLogout }) {
               alignItems: 'center',
               gap: 6,
               flexShrink: 0,
-              transition: 'background 0.15s',
+              transition: 'background 0.2s',
             }}
           >
             ✨ AI
           </button>
-          {/* Panou AI */}
           <div style={{
             width: aiOpen ? 260 : 0,
             overflow: 'hidden',
             transition: 'width 0.2s ease',
             height: '100%',
+            background: 'rgba(15,8,35,0.55)',
+            backdropFilter: 'blur(16px)',
           }}>
             <div style={{ width: 260, height: '100%' }}>
               <AIPanel code={activeFile?.content || ''} language={language} onProposeDiff={setPendingDiff} onApplyCode={(newCode) => handleCodeChange(newCode)} />

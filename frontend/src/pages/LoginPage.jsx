@@ -47,7 +47,7 @@ export default function LoginPage({ onLogin }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
 
       {/* Card */}
-      <div style={{ background: 'rgba(8, 15, 35, 0.8)', backdropFilter: 'blur(16px)', border: '1px solid rgba(160,190,255,0.12)', borderRadius: 16, padding: '40px 36px', width: 380, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ background: 'rgba(8, 15, 35, 0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(130,160,255,0.12)', borderRadius: 16, padding: '40px 36px', width: 380, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center' }}>

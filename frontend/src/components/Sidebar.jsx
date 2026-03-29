@@ -63,14 +63,14 @@ export default function LeftSidebar({ roomId, files, activeFileId, onFileSelect,
     return () => document.removeEventListener('click', close)
   }, [clickedUser])
   return (
-    <div style={{ width: 180, background: '#252526', borderRight: '1px solid #111', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <div style={{ width: 180, background: 'transparent', borderRight: '1px solid rgba(100,130,255,0.12)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
 
-      <div style={{ padding: '8px 10px', borderBottom: '1px solid #111' }}>
-        <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Fisiere</div>
+      <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(100,130,255,0.1)' }}>
+        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Fisiere</div>
         {files.map(f => {
           const color = colorMap[f.created_by] || '#444'
           return (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: 4, background: activeFileId === f.id ? '#2d2d2d' : 'transparent' }}>
+            <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: 4, background: activeFileId === f.id ? 'rgba(100,130,255,0.15)' : 'transparent' }}>
               <div onClick={() => onFileSelect(f)} style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1, overflow: 'hidden', cursor: 'pointer' }}>
                 <span style={{ fontSize: 12, display: 'flex', alignItems: 'center' }}>{getIcon(f.name)}</span>
                 <span style={{ color: fileErrors[f.id] ? '#f48771' : (activeFileId === f.id ? '#fff' : '#ccc'), fontSize: 12, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name}</span>
@@ -96,7 +96,7 @@ export default function LeftSidebar({ roomId, files, activeFileId, onFileSelect,
       </div>
 
       <div style={{ padding: '8px 10px' }} onClick={() => setClickedUser(null)}>
-        <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Participanti</div>
+        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Participanti</div>
         {participants.map(p => (
           <div key={p.id} style={{ position: 'relative' }}>
             <div
@@ -106,7 +106,7 @@ export default function LeftSidebar({ roomId, files, activeFileId, onFileSelect,
                   setClickedUser(prev => prev === p.id ? null : p.id)
                 }
               }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 6px', cursor: me?.id === adminId && p.id !== me?.id ? 'pointer' : 'default', borderRadius: 4, background: clickedUser === p.id ? '#2d2d2d' : 'transparent' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 6px', cursor: me?.id === adminId && p.id !== me?.id ? 'pointer' : 'default', borderRadius: 4, background: clickedUser === p.id ? 'rgba(100,130,255,0.15)' : 'transparent' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                 <div title={onlineIds.has(p.id) ? 'Online' : 'Offline'} style={{ width: 7, height: 7, borderRadius: '50%', background: onlineIds.has(p.id) ? '#4CAF50' : '#555', flexShrink: 0 }} />
@@ -120,7 +120,7 @@ export default function LeftSidebar({ roomId, files, activeFileId, onFileSelect,
 
             {/* Popover kick */}
             {clickedUser === p.id && me?.id === adminId && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', background: '#1e1e1e', border: '1px solid #444', borderRadius: 4, zIndex: 10, padding: '4px 0', minWidth: 80 }}>
+              <div style={{ position: 'absolute', right: 0, top: '100%', background: 'rgba(10,8,30,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(160,100,255,0.2)', borderRadius: 4, zIndex: 10, padding: '4px 0', minWidth: 80 }}>
                 <button
                   onClick={(e) => { e.stopPropagation(); onKick?.(p.id); setClickedUser(null) }}
                   style={{ display: 'block', width: '100%', background: 'transparent', border: 'none', color: '#f48771', cursor: 'pointer', fontSize: 12, padding: '4px 10px', textAlign: 'left' }}

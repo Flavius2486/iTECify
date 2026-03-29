@@ -90,8 +90,8 @@ export default function Chat({ roomId, roomWs }) {
   }
 
   return (
-    <div style={{ width: 260, background: '#252526', borderLeft: '1px solid #111', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid #111', color: '#888', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <div style={{ width: 260, background: 'transparent', borderLeft: '1px solid rgba(160,100,255,0.12)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(160,100,255,0.1)', color: 'rgba(255,255,255,0.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         Chat
       </div>
 
@@ -107,7 +107,7 @@ export default function Chat({ roomId, roomWs }) {
                 @{m.username || (isMe ? user.username : 'utilizator')} · {formatTime(m.created_at)}
               </span>
               <div style={{
-                background: isMe ? '#007acc' : '#2d2d2d',
+                background: isMe ? 'rgba(37,99,235,0.7)' : 'rgba(255,255,255,0.07)',
                 color: '#fff',
                 padding: '5px 10px',
                 borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
@@ -129,7 +129,7 @@ export default function Chat({ roomId, roomWs }) {
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder="Mesaj..."
-          style={{ flex: 1, background: '#1e1e1e', border: '1px solid #444', borderRadius: 4, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none' }}
+          style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(130,160,255,0.15)', borderRadius: 4, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none' }}
         />
         <button onClick={handleSend} style={{ background: '#007acc', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 13 }}>
           ↑

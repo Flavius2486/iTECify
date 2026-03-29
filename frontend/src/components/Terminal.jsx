@@ -134,8 +134,8 @@ export default function Terminal({ roomId, fileId, language, code }) {
         />
       )}
 
-      <div style={{ background: '#0f0f0f', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', borderTop: '1px solid #222' }}>
+      <div style={{ background: 'transparent', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,200,150,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ color: '#569cd6', fontSize: 12, fontFamily: 'monospace' }}>Terminal</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {running && (
