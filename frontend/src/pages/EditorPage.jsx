@@ -277,7 +277,7 @@ export default function EditorPage({ onLogout }) {
   if (loading) return <div style={{ color: '#fff', padding: 20 }}>Se încarcă...</div>
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#1e1e1e' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Toolbar
         roomName={room?.name}
         joinCode={room?.join_code}
