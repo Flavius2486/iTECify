@@ -165,7 +165,7 @@ router.get('/', authMiddleware, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('room_participant')
-            .select('room:room_id (id, name, join_code, created_by, admin_id, created_at)')
+            .select('room:room_id (id, name, join_code, created_by, admin_id, created_at, admin:admin_id (username))')
             .eq('user_id', userId);
         if (error) throw error;
 

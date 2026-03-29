@@ -335,7 +335,7 @@ export default function EditorPage({ onLogout }) {
             )}
           </div>
           <div style={{ height: 200, borderTop: '1px solid #333' }}>
-            <Terminal roomId={roomId} fileId={activeFile?.id} language={language} />
+            <Terminal roomId={roomId} fileId={activeFile?.id} language={language} code={activeFile?.content || ''} />
           </div>
         </div>
         <Chat roomId={roomId} roomWs={roomWs} />

@@ -251,22 +251,7 @@ async function handleDockerExecution(ws, file_id, language, processRef = { curre
 
         const code = rows[0].content;
 
-        // Scanare statică
-        const scan = scanForVulnerabilities(code, language);
-        if (!scan.safe) {
-            ws.send(JSON.stringify({ type: 'error', data: `🔒 Securitate: ${scan.reason}` }));
-            return;
-        }
-
-        // Scanare AI
-        ws.send(JSON.stringify({ type: 'info', data: '🤖 Scanare AI în curs...' }));
-        const aiScan = await aiScanCode(code, language);
-        if (!aiScan.safe) {
-            ws.send(JSON.stringify({ type: 'error', data: `🔒 AI Security: ${aiScan.reason}` }));
-            return;
-        }
-
-        ws.send(JSON.stringify({ type: 'info', data: `✓ Scanare OK. Pornesc containerul pentru ${language}...\n` }));
+        ws.send(JSON.stringify({ type: 'info', data: `Pornesc containerul pentru ${language}...\n` }));
 
         // Configurare per limbaj
         const LANG_CONFIG = {            javascript: { image: 'node:18-alpine',     ext: 'js',  cmd: (f) => ['node', f] },
@@ -291,29 +276,28 @@ async function handleDockerExecution(ws, file_id, language, processRef = { curre
 
         const dockerArgs = [
             'run', '--rm',
-            '--memory', '128m',
+            '--memory', '64m',
+            '--memory-swap', '64m',   // dezactivează swap — OOM killer oprește imediat
             '--cpus', '0.5',
+            '--pids-limit', '50',     // max 50 procese — previne fork bombs
             '--network', 'none',
             '-v', `${tempDir}:/usr/src/app`,
             lang.image,
             ...lang.cmd(containerFile),
         ];
 
-        console.log('[Docker] cmd:', 'docker', dockerArgs.join(' '));
-
+        // Timeout 10s — suficient pentru cod normal, omoară buclele infinite rapid
         const dockerProcess = spawn('docker', dockerArgs);
         processRef.current = dockerProcess;
-        console.log('[Docker] pid:', dockerProcess.pid);
 
-        // Timeout 30s
         const timeout = setTimeout(() => {
             dockerProcess.kill('SIGKILL')
-            ws.send(JSON.stringify({ type: 'error', data: '\n⏱ Timeout: execuția a depășit 30 secunde.' }))
-        }, 30000);
+            ws.send(JSON.stringify({ type: 'error', data: '\n⏱ Timeout: execuția a depășit 10 secunde.' }))
+        }, 10000);
 
-        // Limită output — dacă produce >512KB, kill (buclă infinită cu print)
+        // Limită output 256KB
         let totalOutput = 0;
-        const OUTPUT_LIMIT = 512 * 1024;
+        const OUTPUT_LIMIT = 256 * 1024;
 
         dockerProcess.stdout.on('data', (data) => {
             totalOutput += data.length;

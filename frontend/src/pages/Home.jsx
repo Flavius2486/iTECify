@@ -110,15 +110,26 @@ export default function Home({ onLogout }) {
           <p style={{ color: '#ccc', fontSize: 14, marginBottom: 12, fontWeight: 500, margin: '0 0 12px' }}>Roomurile mele</p>
           {rooms.length === 0 && <p style={{ color: '#666', fontSize: 13 }}>Nu ai roomuri încă</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {rooms.map(r => (
+            {rooms.map(r => {
+              const isAdmin = (r.admin_id || r.created_by) === user?.id
+              const adminUsername = r.admin?.username || null
+              return (
               <div
                 key={r.id}
                 onClick={() => navigate(`/room/${r.id}`)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 4, cursor: 'pointer', background: '#2d2d2d' }}
               >
                 <div>
-                  <p style={{ color: '#fff', fontSize: 13, margin: 0 }}>{r.name}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {isAdmin && <span title="Admin" style={{ fontSize: 11 }}>👑</span>}
+                    <p style={{ color: '#fff', fontSize: 13, margin: 0 }}>{r.name}</p>
+                  </div>
                   <p style={{ color: '#888', fontSize: 11, margin: 0, fontFamily: 'monospace' }}>{r.join_code}</p>
+                  {adminUsername && (
+                    <p style={{ color: '#666', fontSize: 10, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span>👑</span> @{adminUsername}
+                    </p>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button
@@ -134,7 +145,8 @@ export default function Home({ onLogout }) {
                   </button>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
