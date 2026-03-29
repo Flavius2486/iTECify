@@ -29,7 +29,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
         const { data, error } = await supabase
             .from('code_file')
-            .select('id, name, content, language, created_by, created_at, updated_at')
+            .select('id, name, content, language, created_by, created_at, updated_at, ai_lines')
             .eq('room_id', roomId)
             .order('created_at', { ascending: true });
         if (error) throw error;
@@ -54,6 +54,17 @@ router.post('/', authMiddleware, async (req, res) => {
     try {
         if (!(await isRoomMember(roomId, userId))) {
             return res.status(403).json({ message: 'Not authorized in this room' });
+        }
+
+        // Verifică dacă există deja un fișier cu același nume în cameră
+        const { data: existing } = await supabase
+            .from('code_file')
+            .select('id')
+            .eq('room_id', roomId)
+            .eq('name', name)
+            .limit(1);
+        if (existing && existing.length > 0) {
+            return res.status(409).json({ message: `A file named "${name}" already exists in this room` });
         }
 
         const fileId = uuidv4();
@@ -103,7 +114,7 @@ router.put('/:fileId', authMiddleware, async (req, res) => {
         const updates = { content };
         if (name) updates.name = name;
         if (language) updates.language = language;
-
+        if (req.body.ai_lines !== undefined) updates.ai_lines = req.body.ai_lines;
         const { error } = await supabase.from('code_file').update(updates).eq('id', fileId);
         if (error) throw error;
 

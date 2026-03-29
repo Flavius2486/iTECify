@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { logout, getUser } from '../services/auth'
 
-export default function Home() {
+export default function Home({ onLogout }) {
   const [joinCode, setJoinCode] = useState('')
   const [roomName, setRoomName] = useState('')
   const [rooms, setRooms] = useState([])
@@ -43,12 +43,40 @@ export default function Home() {
       setJoinCode('')
       navigate(`/room/${room.id}`)
     } catch (e) {
+      // Dacă ești deja participant, încearcă să găsești room-ul în lista ta
+      if (e.message?.includes('Already a participant')) {
+        const existing = rooms.find(r => r.join_code === joinCode.trim().toUpperCase())
+        if (existing) { navigate(`/room/${existing.id}`); return }
+      }
       setError(e.message)
+    }
+  }
+
+  async function handleLeave(e, roomId) {
+    e.stopPropagation()
+    if (!confirm('Părăsești această cameră? Dacă ești singurul participant, camera va fi ștearsă.')) return
+    try {
+      await api.leaveRoom(roomId)
+      setRooms(prev => prev.filter(r => r.id !== roomId))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleDelete(e, roomId) {
+    e.stopPropagation()
+    if (!confirm('Ștergi această cameră? Toți participanții vor pierde accesul.')) return
+    try {
+      await api.deleteRoom(roomId)
+      setRooms(prev => prev.filter(r => r.id !== roomId))
+    } catch (err) {
+      setError(err.message)
     }
   }
 
   function handleLogout() {
     logout()
+    onLogout?.()
     navigate('/login')
   }
 
@@ -92,7 +120,19 @@ export default function Home() {
                   <p style={{ color: '#fff', fontSize: 13, margin: 0 }}>{r.name}</p>
                   <p style={{ color: '#888', fontSize: 11, margin: 0, fontFamily: 'monospace' }}>{r.join_code}</p>
                 </div>
-                <span style={{ color: '#4CAF50', fontSize: 12 }}>→</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    onClick={(e) => handleLeave(e, r.id)}
+                    title="Părăsește camera"
+                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M5 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      <path d="M9 10l3-3-3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <line x1="12" y1="7" x2="5" y2="7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -36,13 +36,19 @@ export const api = {
   deleteRoom: (roomId) =>
     request(`/rooms/${roomId}`, { method: 'DELETE' }),
 
+  leaveRoom: (roomId) =>
+    request(`/rooms/${roomId}/leave`, { method: 'POST' }),
+
+  kickUser: (roomId, targetId) =>
+    request(`/rooms/${roomId}/kick/${targetId}`, { method: 'POST' }),
+
   getFiles: (roomId) => request(`/rooms/${roomId}/code`),
 
   createFile: (roomId, name, content, language) =>
     request(`/rooms/${roomId}/code`, { method: 'POST', body: JSON.stringify({ name, content, language }) }),
 
-  updateFile: (roomId, fileId, content, name, language) =>
-    request(`/rooms/${roomId}/code/${fileId}`, { method: 'PUT', body: JSON.stringify({ content, name, language }) }),
+  updateFile: (roomId, fileId, content, name, language, aiLines) =>
+    request(`/rooms/${roomId}/code/${fileId}`, { method: 'PUT', body: JSON.stringify({ content, name, language, ai_lines: aiLines }) }),
 
   deleteFile: (roomId, fileId) =>
     request(`/rooms/${roomId}/code/${fileId}`, { method: 'DELETE' }),
@@ -51,6 +57,8 @@ export const api = {
 
   sendMessage: (roomId, content) =>
     request(`/rooms/${roomId}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+
+  getParticipants: (roomId) => request(`/rooms/${roomId}/participants`),
 
   getUsers: (ids) =>
     request(`/users?ids=${ids.join(',')}`),

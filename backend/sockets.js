@@ -10,12 +10,12 @@ import crypto from 'crypto';
 // Ține evidența conexiunilor de tip "room" pentru broadcast lista fișiere
 const roomClients = new Map();
 
-function broadcastToRoom(room_id, payload, exclude = null) {
+export function broadcastToRoom(room_id, payload, exclude = null) {
     const clients = roomClients.get(room_id);
     if (!clients) return;
     const msg = JSON.stringify(payload);
     for (const client of clients) {
-        if (client !== exclude && client.readyState === 1 /* OPEN */) {
+        if (client !== exclude && client.readyState === 1) {
             client.send(msg);
         }
     }
@@ -57,21 +57,18 @@ export default function setupSockets(server) {
                         if (doc.saveTimer) clearTimeout(doc.saveTimer);
                         doc.saveTimer = setTimeout(() => {
                             saveFileToDatabase(file_id, doc);
-                        }, 3000);
+                        }, 1000);
                     });
                 }
             });
         }
         else if (route === 'collab' && !file_id) {
-            // ==========================================
-            // 2. CANAL ROOM – sincronizare listă fișiere
-            // Conectare: ws://host/collab/:roomId
-            // Evenimente primite:  { action: 'file_created', file: {...} }
-            //                      { action: 'file_deleted', fileId: '...' }
-            // Evenimente trimise:  același format către toți ceilalți din cameră
-            // ==========================================
             if (!roomClients.has(room_id)) roomClients.set(room_id, new Set());
             roomClients.get(room_id).add(conn);
+
+            const userId = url.searchParams.get('userId');
+            const username = url.searchParams.get('username') || userId;
+            if (userId) broadcastToRoom(room_id, { action: 'user_online', userId, username }, conn);
 
             conn.on('message', (message) => {
                 try {
@@ -79,7 +76,11 @@ export default function setupSockets(server) {
                     if (
                         payload.action === 'file_created' ||
                         payload.action === 'file_deleted' ||
-                        payload.action === 'chat_message'
+                        payload.action === 'chat_message' ||
+                        payload.action === 'ai_lines_update' ||
+                        payload.action === 'user_kicked' ||
+                        payload.action === 'admin_changed' ||
+                        payload.action === 'user_left'
                     ) {
                         broadcastToRoom(room_id, payload, conn);
                     }
@@ -89,6 +90,7 @@ export default function setupSockets(server) {
             conn.on('close', () => {
                 roomClients.get(room_id)?.delete(conn);
                 if (roomClients.get(room_id)?.size === 0) roomClients.delete(room_id);
+                if (userId) broadcastToRoom(room_id, { action: 'user_offline', userId });
             });
         }
         else if (route === 'execute') {

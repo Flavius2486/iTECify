@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react'
 
 const WS_BASE = 'ws://localhost:3000'
 
-export function useCollaboration(editor, roomId, fileId) {
+export function useCollaboration(editor, roomId, fileId, myColor, myUsername, initialContent) {
   const docRef = useRef(null)
   const providerRef = useRef(null)
 
@@ -19,7 +19,21 @@ export function useCollaboration(editor, roomId, fileId) {
       doc
     )
 
+    if (myColor) {
+      provider.awareness.setLocalStateField('user', { color: myColor, username: myUsername || '' })
+    }
+
     const type = doc.getText('collab-code')
+
+    // Când provider-ul se sincronizează prima dată, dacă documentul e gol
+    // și avem conținut inițial, îl inserăm
+    provider.on('sync', (isSynced) => {
+      if (isSynced && type.length === 0 && initialContent) {
+        doc.transact(() => {
+          type.insert(0, initialContent)
+        })
+      }
+    })
 
     const binding = new MonacoBinding(
       type,
@@ -39,6 +53,12 @@ export function useCollaboration(editor, roomId, fileId) {
     }
   }, [editor, roomId, fileId])
 
+  // Actualizăm culoarea în awareness când se schimbă (participants se încarcă async)
+  useEffect(() => {
+    if (!providerRef.current || !myColor) return
+    providerRef.current.awareness.setLocalStateField('user', { color: myColor, username: myUsername || '' })
+  }, [myColor, myUsername])
+
   function setContent(newCode) {
     const doc = docRef.current
     if (!doc) return
@@ -49,5 +69,4 @@ export function useCollaboration(editor, roomId, fileId) {
     })
   }
 
-  return { doc: docRef, provider: providerRef, setContent }
-}
+  return { doc: docRef, provider: providerRef, setContent }}

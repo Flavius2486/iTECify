@@ -13,8 +13,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={!user ? <LoginPage onLogin={setUser} /> : <Navigate to="/" />} />
-        <Route path="/" element={user ? <Home /> : <Navigate to="/login" />} />
-        <Route path="/room/:roomId" element={user ? <EditorPage /> : <Navigate to="/login" />} />
+        <Route path="/" element={user ? <Home onLogout={() => setUser(null)} /> : <Navigate to="/login" />} />
+        <Route path="/room/:roomId" element={user ? <EditorPage onLogout={() => setUser(null)} /> : <Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>
   )

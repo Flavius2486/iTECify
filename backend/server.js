@@ -20,7 +20,16 @@ app.post('/api/register', register);
 // Rute protejate
 app.use('/api/rooms', roomsRouter);
 
-// GET /api/users?ids=id1,id2
+// GET /api/rooms/:roomId/participants
+app.get('/api/rooms/:roomId/participants', authMiddleware, async (req, res) => {
+    const { roomId } = req.params;
+    const { data, error } = await supabase
+        .from('room_participant')
+        .select('user:user_id (id, username)')
+        .eq('room_id', roomId);
+    if (error) return res.status(500).json({ message: 'Error fetching participants' });
+    res.json(data.map(r => r.user));
+});
 app.get('/api/users', authMiddleware, async (req, res) => {
     const ids = req.query.ids?.split(',').filter(Boolean);
     if (!ids?.length) return res.json([]);

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../services/api'
+import { getUser } from '../services/auth'
 import Toolbar from '../components/Toolbar'
 import CodeEditor from '../components/CodeEditor'
 import Terminal from '../components/Terminal'
@@ -9,6 +10,12 @@ import AIPanel from '../components/AIBlock'
 import Chat from '../components/Chat'
 
 const WS_BASE = 'ws://localhost:3000'
+
+const COLORS = [
+  '#FF3B30', '#007AFF', '#FFD60A', '#30D158',
+  '#FF9F0A', '#BF5AF2', '#00C7BE', '#FF375F',
+  '#FFFFFF', '#AC8E68', '#40C8E0', '#FF6961',
+]
 
 function getLanguage(filename) {
   const ext = filename?.split('.').pop()
@@ -21,7 +28,7 @@ function getLanguage(filename) {
   return map[ext] || 'plaintext'
 }
 
-export default function EditorPage() {
+export default function EditorPage({ onLogout }) {
   const { roomId } = useParams()
   const [room, setRoom] = useState(null)
   const [files, setFiles] = useState([])
@@ -29,13 +36,28 @@ export default function EditorPage() {
   const [loading, setLoading] = useState(true)
   const [roomWs, setRoomWs] = useState(null)
   const [aiOpen, setAiOpen] = useState(false)
-  const [pendingDiff, setPendingDiff] = useState(null) // codul propus de AI
+  const [pendingDiff, setPendingDiff] = useState(null)
+  const [fileErrors, setFileErrors] = useState({})
+  const [aiLines, setAiLines] = useState({}) // fileId -> array of line numbers
+  const [participants, setParticipants] = useState([])
+  const [adminId, setAdminId] = useState(null)
   const roomWsRef = useRef(null)
+
+  const colorMap = useMemo(() => {
+    const map = {}
+    participants.forEach((p, i) => { map[p.id] = COLORS[i % COLORS.length] })
+    return map
+  }, [participants])
+
+  function handleErrorsChange(fileId, hasErrors) {
+    setFileErrors(prev => ({ ...prev, [fileId]: hasErrors }))
+  }
+  const me = getUser()
 
   useEffect(() => {
     loadData()
 
-    const ws = new WebSocket(`${WS_BASE}/collab/${roomId}`)
+    const ws = new WebSocket(`${WS_BASE}/collab/${roomId}?userId=${me?.id || ''}&username=${encodeURIComponent(me?.username || '')}`)
     roomWsRef.current = ws
     setRoomWs(ws)
 
@@ -50,6 +72,28 @@ export default function EditorPage() {
             setActiveFile(a => a?.id === payload.fileId ? (updated[0] || null) : a)
             return updated
           })
+        } else if (payload.action === 'ai_lines_update') {
+          setFiles(prev => prev.map(f => f.id === payload.fileId ? { ...f, ai_lines: payload.aiLines } : f))
+          setActiveFile(a => a?.id === payload.fileId ? { ...a, ai_lines: payload.aiLines } : a)
+        } else if (payload.action === 'user_online') {
+          setParticipants(prev => {
+            if (prev.find(p => p.id === payload.userId)) return prev
+            return [...prev, { id: payload.userId, username: payload.username }]
+          })
+        } else if (payload.action === 'user_left') {
+          setParticipants(prev => prev.filter(p => p.id !== payload.userId))
+        } else if (payload.action === 'user_kicked' && payload.userId !== me?.id) {
+          setParticipants(prev => prev.filter(p => p.id !== payload.userId))
+        } else if (payload.action === 'user_kicked' && payload.userId === me?.id) {
+          alert('Ai fost eliminat din această cameră.')
+          navigate('/')
+        } else if (payload.action === 'admin_changed') {
+          setAdminId(payload.newAdminId)
+          if (payload.oldAdminId && payload.newAdminId) {
+            setFiles(prev => prev.map(f =>
+              f.created_by === payload.oldAdminId ? { ...f, created_by: payload.newAdminId } : f
+            ))
+          }
         }
       } catch (_) {}
     })
@@ -66,11 +110,12 @@ export default function EditorPage() {
       ])
       const currentRoom = roomsData.find(r => r.id === roomId)
       setRoom(currentRoom || null)
+      setAdminId(currentRoom?.admin_id || currentRoom?.created_by || null)
 
       if (filesData.length === 0) {
         // Crează un fișier implicit
         const created = await api.createFile(roomId, 'main.py', '# Scrie codul tau aici\nprint("Hello World")', 'python')
-        const newFile = { id: created.fileId, name: 'main.py', content: '# Scrie codul tau aici\nprint("Hello World")', language: 'python' }
+        const newFile = { id: created.fileId, name: 'main.py', content: '# Scrie codul tau aici\nprint("Hello World")', language: 'python', created_by: me?.id }
         setFiles([newFile])
         setActiveFile(newFile)
       } else {
@@ -86,30 +131,80 @@ export default function EditorPage() {
   async function handleAcceptDiff(newCode) {
     if (!activeFile || !newCode) return
     const file = activeFile
-    setFiles(prev => prev.map(f => f.id === file.id ? { ...f, content: newCode } : f))
-    setActiveFile(prev => ({ ...prev, content: newCode }))
+
+    // Calculăm liniile modificate de AI
+    const originalLines = (file.content || '').split('\n')
+    const newLines = newCode.split('\n')
+    const existingAiLines = file.ai_lines || []
+    const changedLines = []
+    const maxLen = Math.max(originalLines.length, newLines.length)
+    for (let i = 0; i < maxLen; i++) {
+      if (originalLines[i] !== newLines[i] && newLines[i] !== undefined) {
+        changedLines.push(i + 1)
+      }
+    }
+    const mergedAiLines = [...new Set([...existingAiLines, ...changedLines])]
+
+    setFiles(prev => prev.map(f => f.id === file.id ? { ...f, content: newCode, ai_lines: mergedAiLines } : f))
+    setActiveFile(prev => ({ ...prev, content: newCode, ai_lines: mergedAiLines }))
     setPendingDiff(null)
     try {
-      await api.updateFile(roomId, file.id, newCode, file.name, file.language)
+      await api.updateFile(roomId, file.id, newCode, file.name, file.language, mergedAiLines)
     } catch (e) {
       console.error('Error saving AI changes:', e)
     }
   }
 
-  async function handleCodeChange(newCode) {
+  async function handleKick(targetId) {
+    if (!confirm('Elimini acest utilizator din cameră?')) return
     try {
-      await api.updateFile(roomId, activeFile.id, newCode, activeFile.name, activeFile.language)
+      await api.kickUser(roomId, targetId)
+      setParticipants(prev => prev.filter(p => p.id !== targetId))
+      roomWsRef.current?.send(JSON.stringify({ action: 'user_kicked', userId: targetId }))
     } catch (e) {
-      console.error('Error saving file:', e)
+      console.error('Kick error:', e)
     }
   }
 
-  async function handleNewFile() {
-    const name = prompt('Nume fișier (ex: script.py):')
-    if (!name?.trim()) return
+  async function handleLeaveRoom() {
+    if (!confirm('Părăsești camera?')) return
     try {
-      const created = await api.createFile(roomId, name.trim(), '', getLanguage(name.trim()))
-      const newFile = { id: created.fileId, name: name.trim(), content: '', language: getLanguage(name.trim()) }
+      const result = await api.leaveRoom(roomId)
+      // Backend-ul broadcastează user_left și admin_changed
+      // Dar dacă WS-ul e încă deschis, trimitem și noi pentru siguranță
+      if (result.newAdminId) {
+        roomWsRef.current?.send(JSON.stringify({
+          action: 'admin_changed',
+          newAdminId: result.newAdminId,
+          oldAdminId: me?.id,
+        }))
+      }
+      roomWsRef.current?.send(JSON.stringify({ action: 'user_left', userId: me?.id }))
+      navigate('/')
+    } catch (e) {
+      console.error('Leave error:', e)
+    }
+  }
+
+  async function handleCodeChange(newCode) {
+    // Nu salvăm la fiecare keystroke — CRDT-ul din sockets.js se ocupă de persistență
+    // Actualizăm doar state-ul local pentru AI panel și alte componente
+    setFiles(prev => prev.map(f => f.id === activeFile?.id ? { ...f, content: newCode } : f))
+    setActiveFile(prev => prev ? { ...prev, content: newCode } : prev)
+  }
+
+  async function handleNewFile() {
+    let name = prompt('Nume fișier (ex: script.py):')
+    if (!name?.trim()) return
+    name = name.trim()
+    if (!name.includes('.')) name += '.py'
+    if (files.some(f => f.name === name)) {
+      alert(`Fișierul "${name}" există deja în această cameră.`)
+      return
+    }
+    try {
+      const created = await api.createFile(roomId, name, '', getLanguage(name))
+      const newFile = { id: created.fileId, name, content: '', language: getLanguage(name), created_by: me?.id }
       setFiles(prev => [...prev, newFile])
       setActiveFile(newFile)
       // Notifică ceilalți utilizatori
@@ -117,6 +212,37 @@ export default function EditorPage() {
     } catch (e) {
       console.error('Error creating file:', e)
     }
+  }
+
+  async function handleUploadFile() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.py,.js,.jsx,.ts,.tsx,.cpp,.c,.rs,.go,.html,.css,.json,.md,.txt,.java,.rb,.php,.swift,.kt,.cs,.sh,.yaml,.yml,.xml,.sql'
+    input.onchange = async (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      const name = file.name
+      if (files.some(f => f.name === name)) {
+        alert(`Fișierul "${name}" există deja în această cameră.`)
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = async (ev) => {
+        const content = ev.target.result
+        try {
+          const created = await api.createFile(roomId, name, content, getLanguage(name))
+          const newFile = { id: created.fileId, name, content, language: getLanguage(name), created_by: me?.id }
+          setFiles(prev => [...prev, newFile])
+          setActiveFile(newFile)
+          roomWsRef.current?.send(JSON.stringify({ action: 'file_created', file: newFile }))
+        } catch (err) {
+          console.error('Error uploading file:', err)
+          alert(err.message)
+        }
+      }
+      reader.readAsText(file, 'UTF-8')
+    }
+    input.click()
   }
 
   async function handleDeleteFile(fileId) {
@@ -156,14 +282,25 @@ export default function EditorPage() {
         roomName={room?.name}
         joinCode={room?.join_code}
         onSave={handleSave}
+        onLogout={onLogout}
+        onLeave={handleLeaveRoom}
       />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <LeftSidebar
+          roomId={roomId}
+          roomWs={roomWs}
           files={files}
+          fileErrors={fileErrors}
           activeFileId={activeFile?.id}
           onFileSelect={setActiveFile}
           onNewFile={handleNewFile}
           onDeleteFile={handleDeleteFile}
+          onUploadFile={handleUploadFile}
+          colorMap={colorMap}
+          participants={participants}
+          setParticipants={setParticipants}
+          adminId={adminId}
+          onKick={handleKick}
         />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -177,6 +314,21 @@ export default function EditorPage() {
                 diffCode={pendingDiff}
                 onAccept={() => handleAcceptDiff(pendingDiff)}
                 onReject={() => setPendingDiff(null)}
+                onErrorsChange={handleErrorsChange}
+                aiLines={activeFile?.ai_lines || []}
+                onAiLinesChange={async (fId, lines) => {
+                  // Actualizăm local
+                  setFiles(prev => prev.map(f => f.id === fId ? { ...f, ai_lines: lines } : f))
+                  setActiveFile(prev => prev?.id === fId ? { ...prev, ai_lines: lines } : prev)
+                  // Salvăm în DB
+                  try {
+                    await api.updateFile(roomId, fId, activeFile.content, activeFile.name, activeFile.language, lines)
+                  } catch (e) { console.error(e) }
+                  // Broadcast la ceilalți
+                  roomWsRef.current?.send(JSON.stringify({ action: 'ai_lines_update', fileId: fId, aiLines: lines }))
+                }}
+                colorMap={colorMap}
+                myId={me?.id}
               />
             ) : (
               <div style={{ color: '#666', padding: 20, fontSize: 13 }}>Selectează sau creează un fișier</div>
