@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 function extractCode(text) {
   const match = text.match(/```(?:\w+)?\n([\s\S]*?)```/)
@@ -7,18 +7,25 @@ function extractCode(text) {
 
 export default function AIPanel({ code, language, onProposeDiff }) {
   const [loading, setLoading] = useState(false)
-  const [suggestion, setSuggestion] = useState(null)
   const [error, setError] = useState(null)
-  const [mode, setMode] = useState('chat') // 'chat' | 'edit'
+  const [mode, setMode] = useState('chat')
   const [input, setInput] = useState('')
+  const [history, setHistory] = useState([]) // { role: 'user'|'ai', text, isEdit? }
+  const bottomRef = useRef(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [history, loading])
 
   async function handleSend() {
     if (!input.trim()) return
     const prompt = input.trim()
     setInput('')
-    setLoading(true)
-    setSuggestion(null)
     setError(null)
+
+    // Adăugăm mesajul utilizatorului în istoric
+    setHistory(prev => [...prev, { role: 'user', text: prompt, isEdit: mode === 'edit' }])
+    setLoading(true)
 
     const systemPrompt = mode === 'edit'
       ? 'Ești un asistent de programare. Returnează DOAR codul modificat într-un singur bloc de cod markdown, fără explicații. NU introduce bucle infinite, while(true), while(1) sau orice cod care rulează la nesfârșit.'
@@ -51,8 +58,9 @@ export default function AIPanel({ code, language, onProposeDiff }) {
       if (mode === 'edit') {
         const extracted = extractCode(content)
         onProposeDiff(extracted)
+        setHistory(prev => [...prev, { role: 'ai', text: '✓ Modificări propuse în editor.', isEdit: true }])
       } else {
-        setSuggestion(content)
+        setHistory(prev => [...prev, { role: 'ai', text: content }])
       }
     } catch (e) {
       setError(e.message || 'Eroare la AI')
@@ -78,38 +86,49 @@ export default function AIPanel({ code, language, onProposeDiff }) {
         </div>
       </div>
 
-      {/* Răspuns chat */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {/* Quick prompts */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {quickPrompts.map(p => (
-            <button
-              key={p}
-              onClick={() => { setInput(p); }}
-              style={{ background: '#1e1e1e', border: '1px solid #444', color: '#aaa', borderRadius: 12, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+      {/* Istoric conversație */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {history.length === 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {(mode === 'chat'
+              ? ['Explică codul', 'Ce erori are?', 'Cum îl îmbunătățesc?']
+              : ['Corectează erorile', 'Optimizează', 'Adaugă comentarii', 'Curăță codul']
+            ).map(p => (
+              <button key={p} onClick={() => setInput(p)}
+                style={{ background: '#1e1e1e', border: '1px solid #444', color: '#aaa', borderRadius: 12, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {loading && <div style={{ color: '#888', fontSize: 12, marginTop: 8 }}>⏳ Se gândește...</div>}
+        {history.map((msg, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{
+              background: msg.role === 'user' ? '#534AB7' : (msg.isEdit ? '#1a2a1a' : '#1a1830'),
+              border: msg.role === 'ai' ? `0.5px solid ${msg.isEdit ? '#2d5a2d' : '#534AB7'}` : 'none',
+              borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+              padding: '6px 10px',
+              maxWidth: '90%',
+              color: msg.role === 'user' ? '#fff' : (msg.isEdit ? '#4ec94e' : '#AFA9EC'),
+              fontSize: 12,
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}>
+              {msg.text}
+            </div>
+          </div>
+        ))}
+
+        {loading && <div style={{ color: '#888', fontSize: 12 }}>⏳ Se gândește...</div>}
 
         {error && (
-          <div style={{ background: '#2a1515', border: '0.5px solid #f48771', borderRadius: 4, padding: 8, color: '#f48771', fontSize: 11, marginTop: 4 }}>
+          <div style={{ background: '#2a1515', border: '0.5px solid #f48771', borderRadius: 4, padding: 8, color: '#f48771', fontSize: 11 }}>
             ⚠ {error}
           </div>
         )}
-
-        {suggestion && !loading && (
-          <div style={{ background: '#1a1830', border: '0.5px solid #534AB7', borderRadius: 4, padding: 8, marginTop: 4 }}>
-            <div style={{ color: '#888', fontSize: 10, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Răspuns AI</div>
-            <div style={{ color: '#AFA9EC', fontSize: 11, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{suggestion}</div>
-            <button onClick={() => setSuggestion(null)} style={{ background: 'transparent', border: 'none', color: '#555', fontSize: 11, cursor: 'pointer', marginTop: 8, padding: 0 }}>
-              ✕ Închide
-            </button>
-          </div>
-        )}
+        <div ref={bottomRef} />
       </div>
 
       {/* Input area */}
