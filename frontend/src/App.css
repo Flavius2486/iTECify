@@ -4,15 +4,37 @@
   box-sizing: border-box;
 }
 
+@font-face {
+  font-family: 'JMH Robotus';
+  src: url('/fonts/JMH\ Robotus.ttf') format('truetype'),
+       url('/fonts/JMH\ Robotus.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
 body {
   font-family: Inter, Arial, sans-serif;
-  background: #0b0f19;
+  background: #1e3a5f;
   color: white;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'JMH Robotus', 'JetBrains Mono', Arial, sans-serif !important;
+  letter-spacing: 0.3em !important;
 }
 
 button,
 input {
   font: inherit;
+}
+
+.app-background {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 28%),
+    linear-gradient(135deg, #0a1f3d 0%, #1e3a5f 45%, #1a2d4a 100%);
 }
 
 .page {
@@ -25,7 +47,7 @@ input {
   background:
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%),
     radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 28%),
-    linear-gradient(135deg, #0a0d14 0%, #0f1724 45%, #111827 100%);
+    linear-gradient(135deg, #0a1f3d 0%, #1e3a5f 45%, #1a2d4a 100%);
   padding: 24px;
   z-index: 2;
 }

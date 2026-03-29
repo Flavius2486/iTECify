@@ -189,23 +189,25 @@ export default function Home() {
   })
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100vh', overflow: 'hidden', background: 'radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%), radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 28%), linear-gradient(135deg, #0a0d14 0%, #0f1724 45%, #111827 100%)' }}>
+    <div style={{ position: 'relative', width: '100%', minHeight: '100vh', overflow: 'hidden', background: 'radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%), radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 28%), linear-gradient(135deg, #0a1f3d 0%, #1e3a5f 45%, #1a2d4a 100%)' }}>
       {/* Particles Background */}
       <div id="particles-js" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1 }}></div>
 
       {/* Content Container */}
       <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 16, padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 600 }}>
-          <h1 style={{ color: '#fff', fontSize: 28, margin: 0 }}>ITECify <span style={{ color: '#4CAF50' }}>IDE</span></h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: '#888', fontSize: 13 }}>@{user?.username}</span>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+          <div style={{ width: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <h1 style={{ color: '#fff', fontSize: 28, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>ITECify <span style={{ color: '#4CAF50' }}>IDE</span></h1>
+          </div>
+          <div style={{ width: 280, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+            <span style={{ color: '#888', fontSize: 12 }}>@{user?.username}</span>
             <button 
               onClick={handleLogout}
               onMouseEnter={() => setHoveredBtn('logout')}
               onMouseLeave={() => setHoveredBtn(null)}
               onMouseDown={() => setActiveBtn('logout')}
               onMouseUp={() => setActiveBtn(null)}
-              style={{ background: '#3c3c3c', color: '#ccc', border: 'none', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, opacity: activeBtn === 'logout' ? 0.6 : hoveredBtn === 'logout' ? 0.85 : 1, transform: activeBtn === 'logout' ? 'scale(0.95)' : 'scale(1)', transition: 'all 0.15s ease' }}
+              style={{ background: '#3c3c3c', color: '#ccc', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 11, opacity: activeBtn === 'logout' ? 0.6 : hoveredBtn === 'logout' ? 0.85 : 1, transform: activeBtn === 'logout' ? 'scale(0.95)' : 'scale(1)', transition: 'all 0.15s ease' }}
             >
               Logout
             </button>
@@ -216,9 +218,9 @@ export default function Home() {
 
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
-          {/* Roomurile mele */}
+          {/* Room-urile mele */}
           <div style={{ background: 'rgba(37, 37, 38, 0.3)', padding: 24, borderRadius: 12, width: 280, border: '1px solid rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(10px)' }}>
-            <p style={{ color: '#ccc', fontSize: 14, marginBottom: 12, fontWeight: 500, margin: '0 0 12px' }}>Roomurile mele</p>
+            <p style={{ color: '#ccc', fontSize: 14, marginBottom: 12, fontWeight: 500, margin: '0 0 12px' }}>Room-urile mele</p>
             {rooms.length === 0 && <p style={{ color: '#666', fontSize: 13 }}>Nu ai roomuri încă</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
               {rooms.map(r => (

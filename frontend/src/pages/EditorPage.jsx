@@ -63,13 +63,13 @@ export default function EditorPage() {
         if (container) {
           window.particlesJS('editor-particles', {
             particles: {
-              number: { value: 80, density: { enable: true, value_area: 1000 } },
+              number: { value: 100, density: { enable: true, value_area: 800 } },
               color: { value: '#60a5fa' },
               shape: { type: 'circle', stroke: { width: 0, color: '#000000' } },
-              opacity: { value: 0.3, random: false, anim: { enable: false } },
-              size: { value: 3, random: true, anim: { enable: false } },
-              line_linked: { enable: true, distance: 150, color: '#60a5fa', opacity: 0.2, width: 1 },
-              move: { enable: true, speed: 1.5, direction: 'none', random: false, straight: false, out_mode: 'bounce' },
+              opacity: { value: 0.6, random: false, anim: { enable: false } },
+              size: { value: 4, random: true, anim: { enable: false } },
+              line_linked: { enable: true, distance: 120, color: '#60a5fa', opacity: 0.4, width: 1.5 },
+              move: { enable: true, speed: 2, direction: 'none', random: false, straight: false, out_mode: 'bounce' },
             },
             interactivity: {
               detect_on: 'canvas',
@@ -184,7 +184,7 @@ export default function EditorPage() {
   if (loading) return <div style={{ color: '#fff', padding: 20 }}>Se încarcă...</div>
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%), radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 28%), linear-gradient(135deg, #0a0d14 0%, #0f1724 45%, #111827 100%)', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%), radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 28%), linear-gradient(135deg, #0a1f3d 0%, #1e3a5f 45%, #1a2d4a 100%)', position: 'relative' }}>
       <div id="editor-particles" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
         <Toolbar
@@ -224,7 +224,7 @@ export default function EditorPage() {
         <Chat roomId={roomId} roomWs={roomWs} />
 
         {/* Panou AI expandabil */}
-        <div style={{ display: 'flex', borderLeft: '1px solid #111', flexShrink: 0 }}>
+        <div style={{ display: 'flex', borderLeft: '1px solid rgba(100, 150, 200, 0.3)', flexShrink: 0 }}>
         {/* Buton toggle */}
           <button
             onClick={() => setAiOpen(o => !o)}
@@ -239,9 +239,9 @@ export default function EditorPage() {
               width: 28,
               height: 'auto',
               padding: '12px 6px',
-              background: aiOpen ? '#534AB7' : '#2d2b3d',
+              background: aiOpen ? 'rgba(42, 90, 160, 0.7)' : 'rgba(42, 90, 160, 0.4)',
               border: 'none',
-              borderLeft: '1px solid #111',
+              borderLeft: '1px solid rgba(100, 150, 200, 0.3)',
               cursor: 'pointer',
               color: '#CECBF6',
               fontSize: 11,

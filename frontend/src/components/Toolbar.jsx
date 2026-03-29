@@ -21,11 +21,11 @@ export default function Toolbar({ roomName, joinCode, onSave }) {
   })
 
   return (
-    <div style={{ height: 50, background: 'rgba(45, 45, 45, 0.4)', backdropFilter: 'blur(15px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', borderBottom: '1px solid rgba(68, 68, 68, 0.5)', color: 'white', flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ height: 50, background: 'rgba(30, 58, 95, 0.15)', backdropFilter: 'blur(15px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', borderBottom: '1px solid rgba(100, 150, 200, 0.3)', color: 'white', flexShrink: 0, position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span 
           onClick={() => navigate('/home')} 
-          style={{ color: '#fff', fontWeight: 500, fontSize: 14, cursor: 'pointer', transition: 'opacity 0.15s' }}
+          style={{ color: '#fff', fontWeight: 600, fontSize: 16, cursor: 'pointer', transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
           onMouseEnter={() => setHoveredBtn('logo')}
           onMouseLeave={() => setHoveredBtn(null)}
           onMouseDown={() => setActiveBtn('logo')}
@@ -56,7 +56,7 @@ export default function Toolbar({ roomName, joinCode, onSave }) {
             onMouseLeave={() => setHoveredBtn(null)}
             onMouseDown={() => setActiveBtn('save')}
             onMouseUp={() => setActiveBtn(null)}
-            style={getButtonStyle({ background: '#3c3c3c', color: '#ccc', border: 'none', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }, 'save')}
+            style={getButtonStyle({ background: 'rgba(42, 90, 160, 0.6)', color: '#e0e0ff', border: '1px solid rgba(100, 150, 200, 0.3)', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }, 'save')}
           >
             💾 Salvează
           </button>
@@ -67,7 +67,7 @@ export default function Toolbar({ roomName, joinCode, onSave }) {
           onMouseLeave={() => setHoveredBtn(null)}
           onMouseDown={() => setActiveBtn('logout')}
           onMouseUp={() => setActiveBtn(null)}
-          style={getButtonStyle({ background: '#3c3c3c', color: '#ccc', border: 'none', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }, 'logout')}
+          style={getButtonStyle({ background: 'rgba(42, 90, 160, 0.6)', color: '#e0e0ff', border: '1px solid rgba(100, 150, 200, 0.3)', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }, 'logout')}
         >
           Logout
         </button>

@@ -66,10 +66,10 @@ export default function AIPanel({ code, language, onProposeDiff }) {
     : ['Corectează erorile', 'Optimizează', 'Adaugă comentarii', 'Curăță codul']
 
   return (
-    <div style={{ width: 260, background: '#252526', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ width: 260, background: 'rgba(30, 58, 95, 0.2)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ padding: '8px 10px', borderBottom: '1px solid #111', flexShrink: 0 }}>
+      <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(100, 150, 200, 0.2)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>✨</span>
           <span style={{ color: '#CECBF6', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>

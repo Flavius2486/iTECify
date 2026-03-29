@@ -172,7 +172,7 @@ export default function LoginPage({ onLogin }) {
 
       {/* Form Container */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, zIndex: 10 }}>
-        <h2 style={{ color: '#fff', marginBottom: 8 }}>ITECify</h2>
+        <h2 style={{ color: '#fff', marginBottom: 8, letterSpacing: '0.3em', fontFamily: "'JMH Robotus', Arial, sans-serif", fontSize: 40, fontWeight: 600, margin: 0 }}>ITECify</h2>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <button onClick={() => setTab('login')} style={{ background: tab === 'login' ? '#007acc' : '#3c3c3c', color: '#fff', border: 'none', padding: '6px 20px', borderRadius: 4, cursor: 'pointer' }}>

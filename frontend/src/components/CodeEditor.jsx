@@ -62,9 +62,9 @@ export default function CodeEditor({ roomId, fileId, code, language, onChange, d
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(30, 58, 95, 0.15)' }}>
       {diffCode !== null && diffCode !== undefined && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', background: '#1a1a2e', borderBottom: '1px solid #333', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', background: 'rgba(26, 26, 46, 0.8)', borderBottom: '1px solid rgba(100, 150, 200, 0.2)', flexShrink: 0 }}>
           <span style={{ color: '#CECBF6', fontSize: 12 }}>✨ Propunere AI — verifică modificările</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={handleAccept} style={{ background: '#1a3a1a', color: '#4ec94e', border: '1px solid #2d5a2d', borderRadius: 4, padding: '4px 16px', fontSize: 12, cursor: 'pointer' }}>

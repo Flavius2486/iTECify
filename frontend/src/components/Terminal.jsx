@@ -67,8 +67,8 @@ export default function Terminal({ roomId, fileId, language }) {
   const colors = { stdout: '#d4d4d4', stderr: '#f48771', info: '#569cd6', error: '#f48771' }
 
   return (
-    <div style={{ background: '#0f0f0f', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', borderTop: '1px solid #222' }}>
+    <div style={{ background: 'rgba(30, 58, 95, 0.15)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', borderTop: '1px solid rgba(100, 150, 200, 0.2)' }}>
         <span style={{ color: '#569cd6', fontSize: 12, fontFamily: 'monospace' }}>Terminal</span>
         <div style={{ display: 'flex', gap: 6 }}>
           {running && (

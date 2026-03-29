@@ -90,8 +90,8 @@ export default function Chat({ roomId, roomWs }) {
   }
 
   return (
-    <div style={{ width: 260, background: '#252526', borderLeft: '1px solid #111', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid #111', color: '#888', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <div style={{ width: 260, background: 'rgba(30, 58, 95, 0.2)', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#888', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         Chat
       </div>
 

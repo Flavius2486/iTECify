@@ -11,14 +11,14 @@ export default function LeftSidebar({ files, activeFileId, onFileSelect, onNewFi
   }
 
   return (
-    <div style={{ width: 180, background: '#252526', borderRight: '1px solid #111', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <div style={{ width: 180, background: 'rgba(30, 58, 95, 0.2)', borderRight: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
       <div style={{ padding: '8px 10px' }}>
         <div style={{ color: '#888', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Fișiere</div>
 
         {files.map(f => (
           <div
             key={f.id}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: 4, background: activeFileId === f.id ? '#2d2d2d' : 'transparent', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 8, background: activeFileId === f.id ? 'rgba(42, 90, 160, 0.6)' : 'transparent', cursor: 'pointer', transition: 'all 0.15s' }}
           >
             <div onClick={() => onFileSelect(f)} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, overflow: 'hidden' }}>
               <span style={{ fontSize: 12 }}>{getIcon(f.name)}</span>
