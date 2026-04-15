@@ -1,9 +1,6 @@
 {
   "name": "backend",
-<<<<<<< HEAD
-=======
   "type": "module",
->>>>>>> 7a2b5ac60afd8555b6656ff4323c5dc1bd549a01
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -12,12 +9,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-<<<<<<< HEAD
-  "description": "",
-  "dependencies": {
-    "express": "^5.2.1"
-  }
-=======
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",
     "argon2": "^0.44.0",
@@ -30,5 +21,4 @@
     "y-websocket": "^2.0.4"
   },
   "description": ""
->>>>>>> 7a2b5ac60afd8555b6656ff4323c5dc1bd549a01
 }
